@@ -1,14 +1,14 @@
 # studiodisplay
-A simple in-studio display for showing videos, images, and other media for podcasting co-hosts.
+A simple in-studio display for showing videos, images, sounds, and other media for podcasting co-hosts.
 
-## Important: Video Hosting
+## Important: Media Hosting
 
 **SharePoint/OneDrive URLs are NOT supported** due to CORS restrictions and authentication requirements.
 
 For supported hosting options, see **[HOSTING_GUIDE.md](HOSTING_GUIDE.md)**
 
 **Quick recommendations:**
-- **GitHub Releases** (recommended) - Free, unlimited, easy to use
+- **GitHub Releases** (recommended) - Free, unlimited, easy to use, supports flexible filenames
 - **GitHub raw URLs** - For files under 100MB
 - **Cloudflare R2** - For large files and high bandwidth needs
 - **Self-hosted** - Any web server with CORS enabled
@@ -17,28 +17,31 @@ See the [Hosting Guide](HOSTING_GUIDE.md) for detailed setup instructions.
 
 ## Setup
 
-1. **Upload your videos** to GitHub Releases (see [HOSTING_GUIDE.md](HOSTING_GUIDE.md) for details)
+1. **Upload your media** to GitHub Releases (see [HOSTING_GUIDE.md](HOSTING_GUIDE.md) for details)
    - Upload your loop video (e.g., `background.mp4`)
-   - Upload numbered files if needed (e.g., `01.png`, `02.mp4`, etc.)
+   - Upload numbered files if needed (e.g., `01.png`, `02.mp4`, `03-applause.m4a`, etc.)
 
 2. **Open the app** - Go to `https://YOUR_USERNAME.github.io/studiodisplay/podcast_video_player-26.html`
 
 3. **Configure settings** (Press **F1**):
-   - **Video Directory**: Base path ending with `/` (e.g., `https://github.com/user/repo/releases/download/TAG/`)
+   - **Media Directory**: Base path ending with `/` (e.g., `https://github.com/user/repo/releases/download/TAG/`)
    - **Loop Video Filename**: Just the filename (e.g., `background.mp4`)
    - **Timer Duration**: Default countdown time (e.g., `20:00`)
    - Click **Save**
 
-4. **Test it**: Press **L** to play loop video, **1-8** for numbered files
+4. **Test it**:
+   - Press **L** to play loop video
+   - Press **1-8** for numbered videos/images
+   - Press **Numpad 1-8** for sound effects
 
-> **💡 Tip**: Use base path + filename (not full URL) so numbered files work when you press 1-8
+> **💡 Tip**: Use base path + filename (not full URL) so numbered files work when you press keys
 
 ## Media Storage
 
 ### Where Media is Stored
 
-Media files (videos and images) are **NOT stored in this repository**. Instead, they are hosted externally on:
-- **GitHub Releases** (recommended - free, unlimited bandwidth)
+Media files (videos, images, and sounds) are **NOT stored in this repository**. Instead, they are hosted externally on:
+- **GitHub Releases** (recommended - free, unlimited bandwidth, flexible filenames)
 - **GitHub raw URLs** (for files under 100MB)
 - **Cloudflare R2** (for large files and high bandwidth needs)
 - **Self-hosted servers** (any web server with CORS enabled)
@@ -48,7 +51,7 @@ See [HOSTING_GUIDE.md](HOSTING_GUIDE.md) for detailed setup instructions for eac
 
 ### Configuration Storage
 
-Your media configuration (video directory path, loop video filename, timer settings) is saved in your **browser's localStorage**. This means:
+Your media configuration (media directory path, loop video filename, timer settings) is saved in your **browser's localStorage**. This means:
 - Settings are saved per-browser and per-device
 - Settings persist across page reloads
 - Each browser/device needs to be configured separately
@@ -71,12 +74,24 @@ Your media configuration (video directory path, loop video filename, timer setti
 
 #### Adding New Numbered Files (1-8)
 
-1. **Name files properly**: `01.png`, `02.mp4`, `03.jpg`, etc.
-   - Supported formats: `.mp4`, `.mov`, `.jpg`, `.png`, `.gif`, `.avi`, `.webm`
+**For GitHub Releases (Flexible Naming):**
+- **Videos**: `01-intro.mp4`, `02-sermon-clip.mov`, etc.
+- **Images**: `03-announcement.png`, `04-worship-lyrics.jpg`, etc.
+- **Sounds**: `05-applause.mp3`, `06-ding.m4a`, `07-sad-trombone.wav`, etc.
 
-2. **Upload to same location** as your loop video (same GitHub Release, same directory, etc.)
+**For Other Hosting (Exact Names):**
+- Use exact numbered filenames: `01.mp4`, `02.png`, `03.mp3`, etc.
 
-3. **No configuration needed**: Press number keys (1-8) to access them instantly
+**Supported Formats:**
+- Videos: `.mp4`, `.mov`, `.avi`, `.webm`
+- Images: `.jpg`, `.png`, `.gif`, `.jpeg`
+- Sounds: `.mp3`, `.wav`, `.m4a`
+
+**Setup:**
+1. Upload to same location as your loop video (same GitHub Release, same directory, etc.)
+2. **No configuration needed**: Press keys to access them instantly
+   - Regular keys **1-8** → Play videos/images
+   - Numpad keys **1-8** → Play sounds (overlay on current media)
 
 #### Changing Hosting Location
 
@@ -84,7 +99,7 @@ To move your media to a different hosting provider:
 
 1. **Upload files** to new hosting location
 2. Press **F1** to open settings
-3. Update **Video Directory Base Path** with new URL
+3. Update **Media Directory Base Path** with new URL
 4. Update **Loop Video Filename** if needed
 5. Click **Save**
 6. Press **L** to test the loop video
@@ -95,7 +110,8 @@ To move your media to a different hosting provider:
 - **SPACE** - Start/stop timer
 - **R** - Reset timer
 - **L** - Return to loop video
-- **1-8** - Play numbered videos/images (01-08)
+- **1-8** (regular keys) - Play numbered videos/images (01-08)
+- **Numpad 1-8** - Play sound effects (overlay on current media)
 - **F11** - Fullscreen
 - **ESC** - Exit fullscreen or close settings
 
@@ -103,7 +119,10 @@ To move your media to a different hosting provider:
 
 - Loop video playback
 - Countdown timer with visual and audio alerts
-- Quick access to numbered media files (videos and images)
+- Quick access to numbered media files (videos, images, and sounds)
+- Sound effects that play over current media without interruption
+- Flexible filename support for GitHub Releases (descriptive names)
+- Multiple simultaneous sound playback
 - Fullscreen support
 - Persistent settings (saved in browser)
 
@@ -116,11 +135,12 @@ To move your media to a different hosting provider:
 4. **Test the URL**: Paste it in your browser - it should download or play immediately, not open a web page
 
 ### Numbered files (1-8 keys) don't work
-1. **Use base path + filename approach**: Don't use full URL in Video Directory
+1. **Use base path + filename approach**: Don't use full URL in Media Directory
 2. **Correct format**:
-   - Video Directory: `https://github.com/user/repo/releases/download/TAG/` (ends with `/`)
+   - Media Directory: `https://github.com/user/repo/releases/download/TAG/` (ends with `/`)
    - Loop Video Filename: `background.mp4` (just the filename)
-3. **Upload numbered files**: Upload `01.png`, `02.mp4`, etc. to the same location
+3. **Upload numbered files**: Upload `01.png`, `02.mp4`, `03-applause.m4a`, etc. to the same location
+4. **For GitHub Releases**: Use descriptive names like `01-intro.mp4`, `02-announcement.png`, `03-applause.mp3`
 
 ### Image won't return to loop video
 - This was fixed in recent updates. Make sure you have the latest version from GitHub Pages.

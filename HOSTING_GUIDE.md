@@ -1,8 +1,8 @@
-# Video Hosting Migration Guide
+# Media Hosting Guide
 
 ## Why SharePoint/OneDrive Doesn't Work
 
-SharePoint and OneDrive have several critical limitations for embedding videos:
+SharePoint and OneDrive have several critical limitations for embedding media:
 
 1. **CORS Blocking**: SharePoint doesn't send `Access-Control-Allow-Origin` headers, blocking cross-origin video playback
 2. **Authentication Required**: Sharing links redirect (HTTP 302) to authentication pages
@@ -66,16 +66,18 @@ https://raw.githubusercontent.com/etlerd/studiodisplay/main/videos/background.mp
 
 ### Option 3: GitHub Releases ⭐ RECOMMENDED
 
-**Best for**: Versioned video assets, larger files (works great with files up to 2GB)
+**Best for**: Versioned media assets, larger files (works great with files up to 2GB)
 
 **Setup**:
 1. Go to your GitHub repository
 2. Click on "Releases" → "Create a new release"
 3. Create a tag (e.g., "v1.0" or "studio-display")
-4. Attach video files as release assets (drag & drop)
+4. Attach media files as release assets (drag & drop)
+   - Videos, images, and sound files
+   - Use descriptive names: `01-intro.mp4`, `02-announcement.png`, `03-applause.m4a`
 5. Publish the release
-6. Right-click the asset → "Copy link address"
-7. Use that URL in the application settings
+6. Right-click any asset → "Copy link address"
+7. Use the base path in the application settings
 
 **Pros**:
 - ✅ Designed for large binary files (up to 2GB each)
@@ -83,6 +85,7 @@ https://raw.githubusercontent.com/etlerd/studiodisplay/main/videos/background.mp
 - ✅ Free and unlimited bandwidth
 - ✅ Fast and reliable CDN
 - ✅ No CORS issues
+- ✅ **Flexible filenames** - use descriptive names like `01-intro.mp4` or `02-applause.m4a`
 - ✅ Perfect for this application
 
 **Cons**:
@@ -91,26 +94,34 @@ https://raw.githubusercontent.com/etlerd/studiodisplay/main/videos/background.mp
 **Example URL format**:
 ```
 https://github.com/USER/REPO/releases/download/TAG/video.mp4
+https://github.com/USER/REPO/releases/download/TAG/01-intro.mp4
+https://github.com/USER/REPO/releases/download/TAG/02-applause.m4a
 ```
 
 **Real example**:
 ```
 https://github.com/etlerd/studiodisplay/releases/download/v1.0/background.mp4
+https://github.com/etlerd/studiodisplay/releases/download/v1.0/01-sad-trombone.m4a
 ```
 
 **In the app settings** (two approaches):
 
 **Approach 1: Base Path + Filename (RECOMMENDED)**
-This approach allows numbered files (01, 02, 03, etc.) to work:
-- Video Directory: `https://github.com/USER/REPO/releases/download/TAG/`
+This approach allows numbered files (01, 02, 03, etc.) to work with flexible naming:
+- Media Directory: `https://github.com/USER/REPO/releases/download/TAG/`
 - Loop Video Filename: `video.mp4`
+
+This allows you to use:
+- Videos: `01-intro.mp4`, `02-sermon-clip.mov`
+- Images: `03-announcement.png`, `04-worship-lyrics.jpg`
+- Sounds: `05-applause.mp3`, `06-ding.m4a`, `07-sad-trombone.wav`
 
 **Approach 2: Full URL (Only for loop video)**
 This only works for the loop video. Numbered files won't work with this approach:
-- Video Directory: `https://github.com/USER/REPO/releases/download/TAG/video.mp4`
+- Media Directory: `https://github.com/USER/REPO/releases/download/TAG/video.mp4`
 - Loop Video Filename: (leave empty)
 
-**💡 Tip**: Use Approach 1 (base path + filename) if you plan to use numbered files (pressing 1-8 keys)
+**💡 Tip**: Use Approach 1 (base path + filename) to enable numbered files with flexible, descriptive names!
 
 ---
 
@@ -298,23 +309,30 @@ This is the best option because:
 1. Go to your repo's Releases page: `https://github.com/YOUR_USERNAME/YOUR_REPO/releases`
 2. Click "Create a new release"
 3. Create a tag (e.g., "v1.0" or "studio-display")
-4. Drag and drop your video files AND numbered files (01.png, 02.mp4, etc.) into the assets section
+4. Drag and drop ALL your media files into the assets section:
+   - Loop video (e.g., `background.mp4`)
+   - Videos with descriptive names (e.g., `01-intro.mp4`, `02-sermon-clip.mov`)
+   - Images with descriptive names (e.g., `03-announcement.png`, `04-lyrics.jpg`)
+   - Sound files with descriptive names (e.g., `05-applause.mp3`, `06-ding.m4a`)
 5. Click "Publish release"
 6. Right-click any asset → "Copy link address"
 7. Copy everything EXCEPT the filename to get the base path
 8. Configure the app settings (see below)
 9. Save settings and press L to test!
 
-**Example settings (RECOMMENDED - supports numbered files)**:
-- Video Directory: `https://github.com/etlerd/studiodisplay/releases/download/studio-display/`
+**Example settings (RECOMMENDED - supports all media with flexible names)**:
+- Media Directory: `https://github.com/etlerd/studiodisplay/releases/download/studio-display/`
 - Loop Video Filename: `SCP-Motion-Graphic-2025.mp4`
 
 This approach allows:
 - Press **L** → Play loop video
-- Press **1-8** → Play numbered files (01.png, 02.mp4, etc.)
+- Press **1-8** → Play numbered videos/images (`01-intro.mp4`, `02-announcement.png`, etc.)
+- Press **Numpad 1-8** → Play sound effects (`01-applause.mp3`, `02-ding.m4a`, etc.)
+
+All with descriptive, flexible filenames!
 
 **Alternative (loop video only, no numbered files)**:
-- Video Directory: `https://github.com/etlerd/studiodisplay/releases/download/studio-display/SCP-Motion-Graphic-2025.mp4`
+- Media Directory: `https://github.com/etlerd/studiodisplay/releases/download/studio-display/SCP-Motion-Graphic-2025.mp4`
 - Loop Video Filename: (leave empty)
 
 ---
