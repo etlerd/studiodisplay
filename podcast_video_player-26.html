@@ -247,20 +247,23 @@
         <h2>Settings</h2>
         
         <div class="setting-group">
-            <label for="videoDirectory">Video Directory Path:</label>
-            <input type="text" id="videoDirectory" placeholder="file:///C:/Users/username/Videos">
+            <label for="videoDirectory">Video Directory Path or SharePoint URL:</label>
+            <input type="text" id="videoDirectory" placeholder="file:///C:/Users/username/Videos or https://...">
             <small>
-                Use file:// format. Replace spaces with %20<br>
-                Example: file:///C:/Users/name/OneDrive%20-%20Company/Videos
+                <strong>Local files:</strong> Use file:// format. Replace spaces with %20<br>
+                Example: file:///C:/Users/name/OneDrive%20-%20Company/Videos<br>
+                <strong>SharePoint:</strong> Use direct video URL (NOT folder sharing links)<br>
+                Example: https://yoursite.sharepoint.com/sites/sitename/Shared%20Documents/video.mp4
             </small>
         </div>
-        
+
         <div class="setting-group">
-            <label for="loopVideoName">Loop Video Filename:</label>
-            <input type="text" id="loopVideoName" placeholder="background.mp4">
+            <label for="loopVideoName">Loop Video Filename (or leave empty for SharePoint):</label>
+            <input type="text" id="loopVideoName" placeholder="background.mp4 or leave empty">
             <small>
-                Replace spaces with %20<br>
-                Example: Motion%20graphic%20August%202025.mp4
+                <strong>For local files:</strong> Filename with %20 for spaces<br>
+                Example: Motion%20graphic%20August%202025.mp4<br>
+                <strong>For SharePoint:</strong> Leave empty if full URL is in directory field
             </small>
         </div>
         
@@ -525,7 +528,13 @@
             
             buildFilePath(number, extension) {
                 let filePath;
-                if (this.settings.videoDirectory.startsWith('file://')) {
+                // Handle HTTPS/HTTP URLs (like SharePoint)
+                if (this.settings.videoDirectory.startsWith('https://') || this.settings.videoDirectory.startsWith('http://')) {
+                    // For remote URLs, append the filename
+                    // Remove trailing slash if present
+                    const baseUrl = this.settings.videoDirectory.replace(/\/$/, '');
+                    filePath = `${baseUrl}/${number}${extension}`;
+                } else if (this.settings.videoDirectory.startsWith('file://')) {
                     filePath = `${this.settings.videoDirectory}/${number}${extension}`;
                 } else {
                     filePath = `file:///${this.settings.videoDirectory}/${number}${extension}`.replace(/\\/g, '/');
@@ -535,36 +544,73 @@
             
             playLoopVideo() {
                 console.log('Playing loop video...');
-                
+
                 // Hide image if showing
                 this.hideImage();
-                
+
                 // Try file path (no more upload support)
                 if (this.settings.videoDirectory && this.settings.loopVideoName) {
                     console.log('Trying file path for loop video');
                     console.log('Directory:', this.settings.videoDirectory);
                     console.log('Filename:', this.settings.loopVideoName);
-                    
+
                     let videoPath;
-                    if (this.settings.videoDirectory.startsWith('file://')) {
+                    // Handle HTTPS/HTTP URLs (like SharePoint)
+                    if (this.settings.videoDirectory.startsWith('https://') || this.settings.videoDirectory.startsWith('http://')) {
+                        // For SharePoint URLs, check if it's a folder link or direct video link
+                        if (this.settings.videoDirectory.includes(':f:/')) {
+                            // This is a folder sharing link, not a direct video link
+                            this.showStatus('SharePoint folder links not supported. Use direct video link or embed URL.');
+                            console.error('SharePoint folder link detected. Please use a direct video link instead.');
+                            console.log('Tip: Right-click the video in SharePoint and copy the embed code or direct link.');
+                            return;
+                        }
+                        // If loopVideoName is provided, append it; otherwise use the URL as-is
+                        if (this.settings.loopVideoName && this.settings.loopVideoName.trim() !== '') {
+                            const baseUrl = this.settings.videoDirectory.replace(/\/$/, '');
+                            videoPath = `${baseUrl}/${this.settings.loopVideoName}`;
+                        } else {
+                            videoPath = this.settings.videoDirectory;
+                        }
+                    } else if (this.settings.videoDirectory.startsWith('file://')) {
                         videoPath = `${this.settings.videoDirectory}/${this.settings.loopVideoName}`;
                     } else {
                         videoPath = `file:///${this.settings.videoDirectory}/${this.settings.loopVideoName}`.replace(/\\/g, '/');
                     }
-                    
+
                     console.log('Final video path:', videoPath);
                     this.video.src = videoPath;
                     this.video.loop = true;
-                    
+                    // Enable CORS for cross-origin requests
+                    this.video.crossOrigin = 'anonymous';
+
                     // Add a small delay to ensure the video element is ready
                     setTimeout(() => {
                         this.video.play().catch(e => {
                             console.error('Video load error:', e);
-                            this.showStatus(`File access blocked. Check console for path.`);
+                            console.error('Error name:', e.name);
+                            console.error('Error message:', e.message);
+
+                            // Provide more helpful error messages
+                            if (videoPath.startsWith('https://') || videoPath.startsWith('http://')) {
+                                if (e.name === 'NotAllowedError') {
+                                    this.showStatus('Video blocked by browser. SharePoint may require authentication.');
+                                } else if (e.name === 'NotSupportedError') {
+                                    this.showStatus('Video format not supported or CORS blocked.');
+                                } else {
+                                    this.showStatus('Cannot access SharePoint video. Check URL and permissions.');
+                                }
+                                console.log('For SharePoint videos:');
+                                console.log('1. Use a direct video URL (right-click video > Copy link)');
+                                console.log('2. Or use SharePoint embed URL');
+                                console.log('3. Make sure the video has public/anonymous access enabled');
+                            } else {
+                                this.showStatus(`File access blocked. Check console for path.`);
+                            }
                         });
                     }, 100);
-                    
-                    this.showStatus('Auto-starting loop video from settings');
+
+                    this.showStatus('Loading video...');
                 } else {
                     this.showStatus('No loop video configured');
                     console.log('No loop video configured - missing directory or filename');
