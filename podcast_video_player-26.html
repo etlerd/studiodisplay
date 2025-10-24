@@ -962,28 +962,31 @@
 
                 this.timerOverlay.textContent = display;
 
-                // Color and flashing logic for count-up timer:
-                // 0-899 seconds (0:00-14:59): white, no flashing
-                // 900-1139 seconds (15:00-18:59): solid red, no flashing
-                // 1140-1199 seconds (19:00-19:59): flashing red
+                // Color and flashing logic for count-up timer (relative to timer limit):
+                // 0% to 75% of limit: white, no flashing
+                // 75% to 95% of limit: solid red, no flashing
+                // 95% to 100% of limit: flashing red
 
-                if (this.timerSeconds < 900) {
-                    // 0:00-14:59: White, no flashing
+                const solidRedThreshold = Math.floor(this.defaultTimerSeconds * 0.75);
+                const flashingRedThreshold = Math.floor(this.defaultTimerSeconds * 0.95);
+
+                if (this.timerSeconds < solidRedThreshold) {
+                    // 0% to 75%: White, no flashing
                     this.timerOverlay.classList.remove('warning');
                     if (this.flashInterval && this.isTimerRunning) {
                         this.stopFlashing();
                     }
-                } else if (this.timerSeconds >= 900 && this.timerSeconds < 1140) {
-                    // 15:00-18:59: Solid red, no flashing
+                } else if (this.timerSeconds >= solidRedThreshold && this.timerSeconds < flashingRedThreshold) {
+                    // 75% to 95%: Solid red, no flashing
                     this.timerOverlay.classList.add('warning');
                     if (this.flashInterval) {
                         this.stopFlashing();
                     }
-                } else if (this.timerSeconds >= 1140 && this.timerSeconds < this.defaultTimerSeconds) {
-                    // 19:00-19:59: Flashing red
+                } else if (this.timerSeconds >= flashingRedThreshold && this.timerSeconds < this.defaultTimerSeconds) {
+                    // 95% to 100%: Flashing red
                     this.timerOverlay.classList.add('warning');
                     if (!this.flashInterval && this.isTimerRunning) {
-                        console.log('Starting flash at 19:00');
+                        console.log('Starting flash at ' + flashingRedThreshold + ' seconds (95% of limit)');
                         this.startFlashing();
                     }
                 }
