@@ -887,10 +887,14 @@
             }
             
             hideImage() {
+                // Clear event handlers first to prevent them from firing when we clear src
+                this.image.onerror = null;
+                this.image.onload = null;
+
                 // Hide image
                 this.image.style.display = 'none';
                 this.image.src = '';
-                
+
                 // Show video
                 this.video.style.display = 'block';
                 console.log('Image hidden');
