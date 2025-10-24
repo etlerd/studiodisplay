@@ -489,7 +489,10 @@
                         const numpadDigit = e.code.charAt(6); // Extract digit from "NumpadX"
                         const num = numpadDigit.padStart(2, '0');
                         console.log(`Numpad ${numpadDigit} pressed - trying to play sound ${num}`);
-                        this.tryLoadNumberedSound(num);
+                        this.tryLoadNumberedSound(num).catch(err => {
+                            console.error('Error loading sound:', err);
+                            this.showStatus(`Error loading sound ${num}: ${err.message}`);
+                        });
                     } else if (e.key >= '1' && e.key <= '8') {
                         e.preventDefault();
                         const num = e.key.padStart(2, '0');
@@ -610,18 +613,28 @@
 
                 const audioExtensions = ['.mp3', '.wav', '.m4a'];
 
-                console.log(`Trying to find sound file ${number}...`);
+                console.log(`=== Trying to find sound file ${number}... ===`);
+                console.log('Media directory:', this.settings.mediaDirectory);
 
-                // Try using GitHub API for flexible file discovery
-                const foundFile = await this.findFileByPattern(number, audioExtensions);
+                try {
+                    // Try using GitHub API for flexible file discovery
+                    console.log('Attempting GitHub API file discovery...');
+                    const foundFile = await this.findFileByPattern(number, audioExtensions);
 
-                if (foundFile) {
-                    console.log(`Playing sound from GitHub API: ${foundFile.name}`);
-                    this.playNumberedSoundFromUrl(foundFile.url, foundFile.name);
-                    return;
+                    if (foundFile) {
+                        console.log(`✓ Found file via GitHub API: ${foundFile.name}`);
+                        this.playNumberedSoundFromUrl(foundFile.url, foundFile.name);
+                        return;
+                    } else {
+                        console.log('No file found via GitHub API, trying fallback patterns...');
+                    }
+                } catch (error) {
+                    console.error('GitHub API discovery failed:', error);
+                    console.log('Falling back to pattern matching...');
                 }
 
                 // Fallback: try common naming patterns (for non-GitHub hosting)
+                console.log('Using fallback pattern matching...');
                 const namingPatterns = [
                     '',           // Try exact: 01.m4a
                     '-sound',     // Try: 01-sound.m4a
@@ -649,6 +662,8 @@
                         testAudio.src = audioPath;
                     }
                 }
+
+                console.log('=== Finished trying all audio patterns ===');
             }
 
             tryLoadNumberedFile(number) {
