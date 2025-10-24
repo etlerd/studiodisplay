@@ -247,23 +247,25 @@
         <h2>Settings</h2>
         
         <div class="setting-group">
-            <label for="videoDirectory">Video Directory Path or SharePoint URL:</label>
-            <input type="text" id="videoDirectory" placeholder="file:///C:/Users/username/Videos or https://...">
+            <label for="videoDirectory">Video Directory Path or URL:</label>
+            <input type="text" id="videoDirectory" placeholder="https://raw.githubusercontent.com/user/repo/main/videos/">
             <small>
                 <strong>Local files:</strong> Use file:// format. Replace spaces with %20<br>
-                Example: file:///C:/Users/name/OneDrive%20-%20Company/Videos<br>
-                <strong>SharePoint:</strong> Use direct video URL (NOT folder sharing links)<br>
-                Example: https://yoursite.sharepoint.com/sites/sitename/Shared%20Documents/video.mp4
+                Example: file:///C:/Users/name/Videos<br>
+                <strong>Remote files:</strong> Use direct URLs (GitHub, CDN, web server)<br>
+                Example: https://raw.githubusercontent.com/user/repo/main/videos/<br>
+                <strong>⚠️ SharePoint/OneDrive NOT supported</strong> (CORS blocked) - See HOSTING_GUIDE.md
             </small>
         </div>
 
         <div class="setting-group">
-            <label for="loopVideoName">Loop Video Filename (or leave empty for SharePoint):</label>
-            <input type="text" id="loopVideoName" placeholder="background.mp4 or leave empty">
+            <label for="loopVideoName">Loop Video Filename (or leave empty for full URL):</label>
+            <input type="text" id="loopVideoName" placeholder="background.mp4 or leave empty for full URL">
             <small>
-                <strong>For local files:</strong> Filename with %20 for spaces<br>
-                Example: Motion%20graphic%20August%202025.mp4<br>
-                <strong>For SharePoint:</strong> Leave empty if full URL is in directory field
+                <strong>With directory path:</strong> Enter just the filename with %20 for spaces<br>
+                Example: background.mp4 or Motion%20graphic.mp4<br>
+                <strong>Full URL:</strong> Leave empty and put complete URL in directory field above<br>
+                Example: https://github.com/user/repo/releases/download/v1.0/video.mp4
             </small>
         </div>
         
@@ -675,6 +677,32 @@
                 return errors[code] || 'UNKNOWN_ERROR';
             }
             
+            /**
+             * Detect if URL is from an unsupported hosting provider
+             */
+            isUnsupportedHost(url) {
+                const unsupportedHosts = [
+                    'sharepoint.com',
+                    'onedrive.live.com',
+                    '1drv.ms',
+                    'drive.google.com',
+                    'dropbox.com'
+                ];
+
+                return unsupportedHosts.some(host => url.includes(host));
+            }
+
+            /**
+             * Get friendly name for unsupported hosting provider
+             */
+            getHostName(url) {
+                if (url.includes('sharepoint.com')) return 'SharePoint';
+                if (url.includes('onedrive.live.com') || url.includes('1drv.ms')) return 'OneDrive';
+                if (url.includes('drive.google.com')) return 'Google Drive';
+                if (url.includes('dropbox.com')) return 'Dropbox';
+                return 'This hosting provider';
+            }
+
             playLoopVideo() {
                 console.log('Playing loop video...');
 
@@ -682,23 +710,42 @@
                 this.hideImage();
 
                 // Try file path (no more upload support)
-                // Allow SharePoint URLs without loopVideoName (full URL in directory field)
                 if (this.settings.videoDirectory && (this.settings.loopVideoName || this.settings.videoDirectory.startsWith('http'))) {
                     console.log('Trying file path for loop video');
                     console.log('Directory:', this.settings.videoDirectory);
                     console.log('Filename:', this.settings.loopVideoName);
 
                     let videoPath;
-                    // Handle HTTPS/HTTP URLs (like SharePoint)
+                    // Handle HTTPS/HTTP URLs
                     if (this.settings.videoDirectory.startsWith('https://') || this.settings.videoDirectory.startsWith('http://')) {
-                        // For SharePoint URLs, check if it's a folder link or direct video link
-                        if (this.settings.videoDirectory.includes(':f:/')) {
-                            // This is a folder sharing link, not a direct video link
-                            this.showStatus('SharePoint folder links not supported. Use direct video link or embed URL.');
-                            console.error('SharePoint folder link detected. Please use a direct video link instead.');
-                            console.log('Tip: Right-click the video in SharePoint and copy the embed code or direct link.');
+                        // Check for unsupported hosting providers
+                        if (this.isUnsupportedHost(this.settings.videoDirectory)) {
+                            const hostName = this.getHostName(this.settings.videoDirectory);
+                            this.showStatus(`${hostName} NOT supported - CORS blocked. See HOSTING_GUIDE.md for alternatives.`);
+                            console.error(`%c${hostName} URLs are not supported`, 'color: red; font-weight: bold');
+                            console.log('%cWhy this doesn\'t work:', 'font-weight: bold');
+                            console.log('1. CORS (Cross-Origin) policy blocks video playback from ' + hostName);
+                            console.log('2. Authentication/sharing links redirect instead of serving video directly');
+                            console.log('3. These are web viewer links, not direct video file URLs');
+                            console.log('');
+                            console.log('%cSee HOSTING_GUIDE.md for supported alternatives:', 'color: green; font-weight: bold');
+                            console.log('• GitHub Releases (recommended - free & unlimited)');
+                            console.log('• GitHub raw URLs (for files < 100MB)');
+                            console.log('• Cloudflare R2 (10GB free, unlimited bandwidth)');
+                            console.log('• Self-hosted server with CORS enabled');
+                            console.log('');
+                            console.log('View guide: https://github.com/etlerd/studiodisplay/blob/main/HOSTING_GUIDE.md');
                             return;
                         }
+
+                        // Check for SharePoint folder/viewer links
+                        if (this.settings.videoDirectory.includes(':f:/') || this.settings.videoDirectory.includes(':v:/')) {
+                            this.showStatus('Sharing links not supported. Use direct video URLs. See HOSTING_GUIDE.md');
+                            console.error('Detected sharing/viewer link. These require authentication and don\'t work for embedding.');
+                            console.log('Please use a direct video file URL instead.');
+                            return;
+                        }
+
                         // If loopVideoName is provided, append it; otherwise use the URL as-is
                         if (this.settings.loopVideoName && this.settings.loopVideoName.trim() !== '') {
                             const baseUrl = this.settings.videoDirectory.replace(/\/$/, '');
@@ -725,20 +772,30 @@
 
                         // Provide more helpful error messages
                         if (videoPath.startsWith('https://') || videoPath.startsWith('http://')) {
-                            if (e.name === 'NotAllowedError') {
-                                this.showStatus('Video blocked by browser. SharePoint may require authentication.');
+                            // Check if it's an unsupported host (shouldn't reach here but just in case)
+                            if (this.isUnsupportedHost(videoPath)) {
+                                const hostName = this.getHostName(videoPath);
+                                this.showStatus(`${hostName} not supported. See HOSTING_GUIDE.md for alternatives.`);
+                            } else if (e.name === 'NotAllowedError') {
+                                this.showStatus('Video blocked by browser. May require authentication or CORS setup.');
                             } else if (e.name === 'NotSupportedError') {
-                                this.showStatus('Video format not supported or CORS blocked. Try converting to MP4.');
+                                this.showStatus('Video format not supported or CORS blocked. See HOSTING_GUIDE.md');
                             } else if (e.message && e.message.includes('CORS')) {
-                                this.showStatus('CORS blocked. Video needs anonymous access or proper CORS headers.');
+                                this.showStatus('CORS blocked. Use supported hosting (see HOSTING_GUIDE.md)');
+                            } else if (e.message && e.message.includes('timeout')) {
+                                this.showStatus('Video loading timeout. Check URL and hosting provider.');
                             } else {
-                                this.showStatus('Cannot access SharePoint video. Check URL and permissions.');
+                                this.showStatus('Cannot load video. Check URL and hosting. See HOSTING_GUIDE.md');
                             }
-                            console.log('For SharePoint videos:');
-                            console.log('1. Use a direct video URL (right-click video > Copy link)');
-                            console.log('2. Or use SharePoint embed URL');
-                            console.log('3. Make sure the video has public/anonymous access enabled');
-                            console.log('4. Ensure CORS is enabled for the SharePoint site');
+                            console.log('%cVideo loading failed', 'color: red; font-weight: bold');
+                            console.log('Possible causes:');
+                            console.log('• CORS not enabled on hosting provider');
+                            console.log('• Video requires authentication');
+                            console.log('• URL is not a direct video file link');
+                            console.log('• Network or hosting issue');
+                            console.log('');
+                            console.log('%cFor supported hosting options:', 'color: green; font-weight: bold');
+                            console.log('View HOSTING_GUIDE.md for setup instructions');
                         } else {
                             this.showStatus(`File access blocked. Check console for path.`);
                         }
