@@ -17,12 +17,21 @@ See the [Hosting Guide](HOSTING_GUIDE.md) for detailed setup instructions.
 
 ## Setup
 
-1. Open `podcast_video_player-26.html` in a web browser
-2. Press **F1** to open settings
-3. Configure your video hosting URL (see [HOSTING_GUIDE.md](HOSTING_GUIDE.md))
-4. Set your loop video filename
-5. Configure timer duration
-6. Save settings
+1. **Upload your videos** to GitHub Releases (see [HOSTING_GUIDE.md](HOSTING_GUIDE.md) for details)
+   - Upload your loop video (e.g., `background.mp4`)
+   - Upload numbered files if needed (e.g., `01.png`, `02.mp4`, etc.)
+
+2. **Open the app** - Go to `https://YOUR_USERNAME.github.io/studiodisplay/podcast_video_player-26.html`
+
+3. **Configure settings** (Press **F1**):
+   - **Video Directory**: Base path ending with `/` (e.g., `https://github.com/user/repo/releases/download/TAG/`)
+   - **Loop Video Filename**: Just the filename (e.g., `background.mp4`)
+   - **Timer Duration**: Default countdown time (e.g., `20:00`)
+   - Click **Save**
+
+4. **Test it**: Press **L** to play loop video, **1-8** for numbered files
+
+> **💡 Tip**: Use base path + filename (not full URL) so numbered files work when you press 1-8
 
 ## Keyboard Shortcuts
 
@@ -44,8 +53,22 @@ See the [Hosting Guide](HOSTING_GUIDE.md) for detailed setup instructions.
 
 ## Troubleshooting
 
-If you see CORS errors or videos won't load:
-1. Check that you're using a supported hosting provider (see [HOSTING_GUIDE.md](HOSTING_GUIDE.md))
-2. Verify your URL is a direct link to the video file (not a sharing or viewer link)
-3. Test the URL by pasting it directly in your browser - it should download or play immediately
-4. Check the browser console for detailed error messages
+### Videos won't load
+1. **Check hosting provider**: SharePoint/OneDrive/Google Drive/Dropbox are NOT supported (see [HOSTING_GUIDE.md](HOSTING_GUIDE.md))
+2. **Use GitHub Releases**: Recommended - free, unlimited, works perfectly
+3. **Verify URL format**: Should be a direct link, not a sharing/viewer link
+4. **Test the URL**: Paste it in your browser - it should download or play immediately, not open a web page
+
+### Numbered files (1-8 keys) don't work
+1. **Use base path + filename approach**: Don't use full URL in Video Directory
+2. **Correct format**:
+   - Video Directory: `https://github.com/user/repo/releases/download/TAG/` (ends with `/`)
+   - Loop Video Filename: `background.mp4` (just the filename)
+3. **Upload numbered files**: Upload `01.png`, `02.mp4`, etc. to the same location
+
+### Image won't return to loop video
+- This was fixed in recent updates. Make sure you have the latest version from GitHub Pages.
+
+### More help
+- Check the browser console (F12) for detailed error messages
+- See [HOSTING_GUIDE.md](HOSTING_GUIDE.md) for complete setup instructions
