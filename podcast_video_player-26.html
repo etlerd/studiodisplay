@@ -274,8 +274,11 @@
                 <strong>Numbered files (01, 02, 03, etc.):</strong> Upload files to your hosting location (e.g., same GitHub Release as your loop video).<br>
                 <strong>Regular keys 1-8:</strong> Play videos/images (formats: .mp4, .mov, .jpg, .png, .gif, .avi, .webm)<br>
                 <strong>Numpad keys 1-8:</strong> Play sounds over current media (formats: .mp3, .wav, .m4a)<br>
-                <strong>Sound file naming (GitHub Releases):</strong> Use any descriptive name starting with the number (e.g., 01-sad-trombone.m4a, 02-applause.mp3)<br>
-                <strong>Sound file naming (other hosting):</strong> Use simple patterns: 01.m4a, 01-sound.m4a, 01-audio.wav, etc.
+                <strong>File naming (GitHub Releases):</strong> Use any descriptive name starting with the number:<br>
+                • Videos: 01-intro.mp4, 02-sermon-clip.mov<br>
+                • Images: 03-announcement.png, 04-worship-lyrics.jpg<br>
+                • Sounds: 05-applause.mp3, 06-ding.m4a<br>
+                <strong>File naming (other hosting):</strong> Use exact numbered filenames: 01.mp4, 02.png, 03.mp3, etc.
             </small>
         </div>
         
@@ -497,7 +500,10 @@
                         e.preventDefault();
                         const num = e.key.padStart(2, '0');
                         console.log(`Number ${e.key} pressed - trying to load file ${num}`);
-                        this.tryLoadNumberedFile(num);
+                        this.tryLoadNumberedFile(num).catch(err => {
+                            console.error('Error loading file:', err);
+                            this.showStatus(`Error loading file ${num}: ${err.message}`);
+                        });
                     }
                 };
                 
@@ -681,18 +687,46 @@
                 console.log('=== Finished trying all audio patterns ===');
             }
 
-            tryLoadNumberedFile(number) {
+            async tryLoadNumberedFile(number) {
                 if (!this.settings.mediaDirectory) {
                     this.showStatus('Media directory not configured');
                     return;
                 }
 
-                // Try image extensions first, then video extensions, then audio extensions
                 const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif'];
                 const videoExtensions = ['.mp4', '.mov', '.avi', '.webm'];
-                const audioExtensions = ['.mp3', '.wav', '.m4a'];
 
-                console.log(`Trying to find file ${number}...`);
+                console.log(`=== Trying to find video/image file ${number}... ===`);
+                console.log('Media directory:', this.settings.mediaDirectory);
+
+                try {
+                    // Try using GitHub API for flexible file discovery
+                    console.log('Attempting GitHub API file discovery for videos/images...');
+
+                    // Try images first
+                    const foundImage = await this.findFileByPattern(number, imageExtensions);
+                    if (foundImage) {
+                        console.log(`✓ Found image via GitHub API: ${foundImage.name}`);
+                        this.playNumberedImageFromUrl(foundImage.url, foundImage.name);
+                        return;
+                    }
+
+                    // Then try videos
+                    const foundVideo = await this.findFileByPattern(number, videoExtensions);
+                    if (foundVideo) {
+                        console.log(`✓ Found video via GitHub API: ${foundVideo.name}`);
+                        this.playNumberedVideoFromUrl(foundVideo.url, foundVideo.name);
+                        return;
+                    }
+
+                    console.log('No video/image found via GitHub API, trying fallback patterns...');
+                } catch (error) {
+                    console.error('GitHub API discovery failed:', error);
+                    console.log('Falling back to pattern matching...');
+                }
+
+                // Fallback: try exact filenames (for non-GitHub hosting)
+                console.log('Using fallback pattern matching...');
 
                 // Try images first
                 for (const ext of imageExtensions) {
@@ -728,22 +762,7 @@
                     testVideo.src = videoPath;
                 }
 
-                // Also try audio files
-                for (const ext of audioExtensions) {
-                    const audioPath = this.buildFilePath(number, ext);
-                    console.log(`Trying audio: ${audioPath}`);
-
-                    // Create a temporary audio to test if it loads
-                    const testAudio = new Audio();
-                    testAudio.onloadedmetadata = () => {
-                        console.log(`Found audio: ${number}${ext}`);
-                        this.playNumberedSound(number, ext);
-                    };
-                    testAudio.onerror = () => {
-                        console.log(`Audio not found: ${number}${ext}`);
-                    };
-                    testAudio.src = audioPath;
-                }
+                console.log('=== Finished trying all video/image patterns ===');
             }
             
             buildFilePath(number, extension) {
@@ -1058,6 +1077,32 @@
                 }
             }
             
+            playNumberedVideoFromUrl(url, displayName) {
+                console.log(`Playing video from URL: ${displayName}`);
+                console.log(`URL: ${url}`);
+
+                // Hide image if showing
+                this.hideImage();
+
+                // Use the improved loading method
+                this.loadVideoSource(url, false).catch(e => {
+                    console.error('Video load error:', e);
+                    this.showStatus(`Could not load video ${displayName} - ${e.name}`);
+                    // Return to loop video after error
+                    setTimeout(() => this.playLoopVideo(), 2000);
+                });
+
+                this.showStatus(`Playing video ${displayName}`);
+            }
+
+            playNumberedImageFromUrl(url, displayName) {
+                console.log(`Displaying image from URL: ${displayName}`);
+                console.log(`URL: ${url}`);
+
+                this.showImage(url);
+                this.showStatus(`Displaying image ${displayName} (press L to return to loop)`);
+            }
+
             playNumberedImage(number, extension = '.jpg') {
                 console.log(`Displaying image ${number}${extension}...`);
 
