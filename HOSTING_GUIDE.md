@@ -64,29 +64,46 @@ https://raw.githubusercontent.com/etlerd/studiodisplay/main/videos/background.mp
 
 ---
 
-### Option 3: GitHub Releases
+### Option 3: GitHub Releases ⭐ RECOMMENDED
 
-**Best for**: Versioned video assets, larger files
+**Best for**: Versioned video assets, larger files (works great with files up to 2GB)
 
 **Setup**:
-1. Create a new release in your GitHub repo
-2. Attach video files as release assets
-3. Use the direct download URL from the release
+1. Go to your GitHub repository
+2. Click on "Releases" → "Create a new release"
+3. Create a tag (e.g., "v1.0" or "studio-display")
+4. Attach video files as release assets (drag & drop)
+5. Publish the release
+6. Right-click the asset → "Copy link address"
+7. Use that URL in the application settings
 
 **Pros**:
-- Designed for large binary files
-- Doesn't bloat repository history
-- Free and unlimited
+- ✅ Designed for large binary files (up to 2GB each)
+- ✅ Doesn't bloat repository history
+- ✅ Free and unlimited bandwidth
+- ✅ Fast and reliable CDN
+- ✅ No CORS issues
+- ✅ Perfect for this application
 
 **Cons**:
-- Manual process for each update
-- URLs change with each release
+- Manual process for each update (but very easy)
 
-**Example**:
-1. Go to Releases → Create new release
-2. Upload `background.mp4` as an asset
-3. Right-click the asset → Copy link address
-4. URL format: `https://github.com/USER/REPO/releases/download/TAG/background.mp4`
+**Example URL format**:
+```
+https://github.com/USER/REPO/releases/download/TAG/video.mp4
+```
+
+**Real example**:
+```
+https://github.com/etlerd/studiodisplay/releases/download/v1.0/background.mp4
+```
+
+**In the app settings**:
+- Video Directory: Leave empty OR use the full URL
+- Loop Video Filename: Leave empty (the URL is complete)
+- Or use base path + filename approach:
+  - Directory: `https://github.com/USER/REPO/releases/download/TAG/`
+  - Filename: `video.mp4`
 
 ---
 
@@ -177,14 +194,16 @@ location /videos/ {
 
 | Option | Cost | Max File Size | Bandwidth | Ease of Use | Best For |
 |--------|------|---------------|-----------|-------------|----------|
+| **GitHub Releases** ⭐ | **Free** | **2GB** | **Unlimited** | **⭐⭐⭐⭐⭐** | **This app!** |
 | GitHub Repo | Free | 100MB | Good | ⭐⭐⭐⭐⭐ | Small files |
-| Git LFS | $5/mo* | 2GB | 1GB/mo free | ⭐⭐⭐⭐ | Medium files |
-| GitHub Releases | Free | No limit | Unlimited | ⭐⭐⭐⭐ | Large files |
+| Git LFS | $5/mo* | 2GB | 1GB/mo free | ⭐⭐⭐⭐ | Version control |
 | Cloudflare R2 | Free* | No limit | Unlimited | ⭐⭐⭐ | Professional use |
 | Backblaze B2 | $5/TB | No limit | Via Cloudflare | ⭐⭐⭐ | Large storage |
 | Self-hosted | Varies | Varies | Varies | ⭐⭐ | Existing hosting |
 
 *Free tiers available
+
+**GitHub Releases is the recommended option** - it's free, reliable, handles large files, and works perfectly with this application.
 
 ---
 
@@ -258,19 +277,30 @@ fetch('YOUR_VIDEO_URL', { method: 'HEAD' })
 
 ## Recommended Setup for This Project
 
-**For most users**: Use **GitHub Releases**
-- Free and unlimited
-- Simple to use
-- No bandwidth concerns
-- Perfect for this use case
+**For most users**: Use **GitHub Releases** ⭐
 
-**Quick start**:
-1. Go to your repo's Releases page
-2. Create a new release (e.g., "v1.0-videos")
-3. Drag and drop your video files
-4. Publish release
-5. Right-click each video → Copy link
-6. Use those URLs in the app
+This is the best option because:
+- ✅ **Free and unlimited bandwidth**
+- ✅ **Handles large files** (up to 2GB each)
+- ✅ **No CORS issues** - works out of the box
+- ✅ **Fast GitHub CDN** for global delivery
+- ✅ **Simple to use** - just drag and drop
+- ✅ **Reliable** - backed by GitHub's infrastructure
+
+**Quick start guide**:
+1. Go to your repo's Releases page: `https://github.com/YOUR_USERNAME/YOUR_REPO/releases`
+2. Click "Create a new release"
+3. Create a tag (e.g., "v1.0" or "videos-v1")
+4. Drag and drop your video files into the assets section
+5. Click "Publish release"
+6. Right-click each video file → "Copy link address"
+7. Paste the full URL into the app's "Video Directory" field
+8. Leave "Loop Video Filename" empty
+9. Save settings and press L to test!
+
+**Example settings**:
+- Video Directory: `https://github.com/etlerd/studiodisplay/releases/download/v1.0/background.mp4`
+- Loop Video Filename: (leave empty)
 
 ---
 

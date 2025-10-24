@@ -761,8 +761,9 @@
 
                     console.log('Final video path:', videoPath);
 
-                    // CRITICAL: Set CORS before setting src
-                    this.video.crossOrigin = 'anonymous';
+                    // Note: Not setting crossOrigin to avoid CORS requirements
+                    // crossOrigin is only needed for canvas/WebGL manipulation, not basic playback
+                    // GitHub releases and most CDNs don't send CORS headers
 
                     // Load the video with proper error handling
                     this.loadVideoSource(videoPath, true).catch(e => {
@@ -823,8 +824,7 @@
 
                     console.log(`Video ${number} path:`, videoPath);
 
-                    // Set CORS before loading
-                    this.video.crossOrigin = 'anonymous';
+                    // Note: Not setting crossOrigin - not needed for basic playback
 
                     // Use the improved loading method
                     this.loadVideoSource(videoPath, false).catch(e => {
@@ -863,8 +863,7 @@
                 this.video.pause();
                 this.video.style.display = 'none';
 
-                // Enable CORS for images too
-                this.image.crossOrigin = 'anonymous';
+                // Note: Not setting crossOrigin - not needed for basic image display
 
                 // Handle image load errors
                 this.image.onerror = () => {
