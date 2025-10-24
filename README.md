@@ -33,6 +33,62 @@ See the [Hosting Guide](HOSTING_GUIDE.md) for detailed setup instructions.
 
 > **💡 Tip**: Use base path + filename (not full URL) so numbered files work when you press 1-8
 
+## Media Storage
+
+### Where Media is Stored
+
+Media files (videos and images) are **NOT stored in this repository**. Instead, they are hosted externally on:
+- **GitHub Releases** (recommended - free, unlimited bandwidth)
+- **GitHub raw URLs** (for files under 100MB)
+- **Cloudflare R2** (for large files and high bandwidth needs)
+- **Self-hosted servers** (any web server with CORS enabled)
+- **Local files** (using `file://` URLs)
+
+See [HOSTING_GUIDE.md](HOSTING_GUIDE.md) for detailed setup instructions for each hosting option.
+
+### Configuration Storage
+
+Your media configuration (video directory path, loop video filename, timer settings) is saved in your **browser's localStorage**. This means:
+- Settings are saved per-browser and per-device
+- Settings persist across page reloads
+- Each browser/device needs to be configured separately
+- Clearing browser data will reset settings
+
+### How to Change/Update Media Files
+
+#### Updating Existing Media Files
+
+1. **Upload new files** to your hosting location (e.g., GitHub Releases)
+   - Use the same filenames to replace old files, OR
+   - Use new filenames and update settings (see below)
+
+2. **If using same filenames**: Your app will automatically load the new files on next reload
+
+3. **If using new filenames**:
+   - Press **F1** to open settings
+   - Update the **Loop Video Filename** field with the new filename
+   - Click **Save**
+
+#### Adding New Numbered Files (1-8)
+
+1. **Name files properly**: `01.png`, `02.mp4`, `03.jpg`, etc.
+   - Supported formats: `.mp4`, `.mov`, `.jpg`, `.png`, `.gif`, `.avi`, `.webm`
+
+2. **Upload to same location** as your loop video (same GitHub Release, same directory, etc.)
+
+3. **No configuration needed**: Press number keys (1-8) to access them instantly
+
+#### Changing Hosting Location
+
+To move your media to a different hosting provider:
+
+1. **Upload files** to new hosting location
+2. Press **F1** to open settings
+3. Update **Video Directory Base Path** with new URL
+4. Update **Loop Video Filename** if needed
+5. Click **Save**
+6. Press **L** to test the loop video
+
 ## Keyboard Shortcuts
 
 - **F1** - Open settings
