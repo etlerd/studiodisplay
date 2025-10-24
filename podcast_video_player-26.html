@@ -337,7 +337,8 @@
                     console.log('Timer display updated');
                     
                     // Auto-start loop video if configured
-                    if (this.settings.videoDirectory && this.settings.loopVideoName) {
+                    // Allow SharePoint URLs without loopVideoName (full URL in directory field)
+                    if (this.settings.videoDirectory && (this.settings.loopVideoName || this.settings.videoDirectory.startsWith('http'))) {
                         console.log('Auto-starting loop video...');
                         this.playLoopVideo();
                     } else {
@@ -549,7 +550,8 @@
                 this.hideImage();
 
                 // Try file path (no more upload support)
-                if (this.settings.videoDirectory && this.settings.loopVideoName) {
+                // Allow SharePoint URLs without loopVideoName (full URL in directory field)
+                if (this.settings.videoDirectory && (this.settings.loopVideoName || this.settings.videoDirectory.startsWith('http'))) {
                     console.log('Trying file path for loop video');
                     console.log('Directory:', this.settings.videoDirectory);
                     console.log('Filename:', this.settings.loopVideoName);
