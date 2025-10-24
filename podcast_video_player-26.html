@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podcast Video Player</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            outline: none;
+        }
+
+        #videoContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+
+        #mainVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            display: block;
+        }
+
+        #mainImage {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+        }
+
+        #timerOverlay {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+            font-size: 8vw;
+            color: white;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            user-select: none;
+            transition: color 0.3s ease;
+        }
+
+        #timerOverlay.warning {
+            color: #ff4444;
+        }
+
+        #settingsIcon {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 20;
+            transition: background-color 0.3s ease;
+        }
+
+        #settingsIcon:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #settingsPanel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            border: 2px solid #333;
+            z-index: 30;
+            min-width: 500px;
+            display: none;
+        }
+
+        #settingsPanel h2 {
+            color: white;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-group label {
+            display: block;
+            color: white;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .setting-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background: #222;
+            color: white;
+            font-size: 14px;
+        }
+
+        .setting-group input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .setting-group small {
+            color: #aaa;
+            margin-top: 5px;
+            display: block;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #45a049;
+        }
+
+        .btn-secondary {
+            background: #666;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #555;
+        }
+
+        #helpText {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            z-index: 15;
+            max-width: 300px;
+            display: none;
+            text-align: right;
+        }
+
+        .help-visible #helpText {
+            display: block;
+        }
+
+        #status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            z-index: 15;
+            max-width: 300px;
+            text-align: right;
+        }
+
+        .file-input-container {
+            margin-top: 10px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 8px 15px;
+            background: #555;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .file-input-label:hover {
+            background: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="videoContainer">
+        <video id="mainVideo"></video>
+        <img id="mainImage" alt="Display Image">
+        
+        <div id="timerOverlay">20:00</div>
+        
+        <button id="settingsIcon">
+            <i class="fas fa-cog"></i>
+        </button>
+        
+        <div id="helpText">
+            F1: Settings | SPACE: Timer Start/Stop | R: Timer Reset<br>
+            L: Loop Video | 1-8: Play Videos/Images 01-08<br>
+            F11: Fullscreen | ESC: Exit Fullscreen
+        </div>
+        
+        <div id="status"></div>
+    </div>
+
+    <div id="settingsPanel">
+        <h2>Settings</h2>
+        
+        <div class="setting-group">
+            <label for="videoDirectory">Video Directory Path:</label>
+            <input type="text" id="videoDirectory" placeholder="file:///C:/Users/username/Videos">
+            <small>
+                Use file:// format. Replace spaces with %20<br>
+                Example: file:///C:/Users/name/OneDrive%20-%20Company/Videos
+            </small>
+        </div>
+        
+        <div class="setting-group">
+            <label for="loopVideoName">Loop Video Filename:</label>
+            <input type="text" id="loopVideoName" placeholder="background.mp4">
+            <small>
+                Replace spaces with %20<br>
+                Example: Motion%20graphic%20August%202025.mp4
+            </small>
+        </div>
+        
+        <div class="setting-group">
+            <small style="color: #aaa; line-height: 1.5;">
+                <strong>Numbered files (01, 02, 03, etc.):</strong> Place files starting with 01, 02, 03, etc. in your video directory. 
+                The app will automatically find them when you press number keys. Supported formats: .mp4, .mov, .jpg, .png, .gif
+            </small>
+        </div>
+        
+        <div class="setting-group">
+            <label for="timerDuration">Default Timer Duration (MM:SS):</label>
+            <input type="text" id="timerDuration" placeholder="20:00" pattern="[0-9]{1,2}:[0-9]{2}">
+        </div>
+        
+        <div class="setting-group">
+            <label style="display: flex; align-items: center;">
+                <input type="checkbox" id="autoStartTimer" style="margin-right: 10px; width: auto;">
+                <span>Auto-start timer when loop video begins</span>
+            </label>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+            <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        console.log('Script starting - NEW VERSION WITH JS FLASHING...');
+        
+        let player = null;
+        
+        class PodcastPlayer {
+            constructor() {
+                console.log('Creating PodcastPlayer...');
+                this.video = document.getElementById('mainVideo');
+                this.image = document.getElementById('mainImage');
+                this.timerOverlay = document.getElementById('timerOverlay');
+                this.settingsPanel = document.getElementById('settingsPanel');
+                this.status = document.getElementById('status');
+                
+                this.timerSeconds = 1200; // 20 minutes default
+                this.timerInterval = null;
+                this.isTimerRunning = false;
+                this.defaultTimerSeconds = 1200;
+                this.flashInterval = null; // For flashing at 0
+                this.audioContext = null; // For sound generation
+                
+                this.settings = {
+                    videoDirectory: '',
+                    loopVideoName: '',
+                    timerDuration: '20:00',
+                    autoStartTimer: false
+                };
+                
+                console.log('About to initialize...');
+                this.init();
+            }
+            
+            init() {
+                console.log('Initializing...');
+                try {
+                    this.loadSettings();
+                    console.log('Settings loaded');
+                    
+                    this.setupEventListeners();
+                    console.log('Event listeners set up');
+                    
+                    this.updateTimerDisplay();
+                    console.log('Timer display updated');
+                    
+                    // Auto-start loop video if configured
+                    if (this.settings.videoDirectory && this.settings.loopVideoName) {
+                        console.log('Auto-starting loop video...');
+                        this.playLoopVideo();
+                    } else {
+                        this.showStatus('Configure video settings (F1) to auto-start loop video');
+                    }
+                    
+                    console.log('Initialization complete');
+                } catch (error) {
+                    console.error('Error during initialization:', error);
+                }
+            }
+            
+            loadSettings() {
+                const saved = JSON.parse(localStorage.getItem('podcastPlayerSettings') || '{}');
+                console.log('Raw saved settings:', JSON.stringify(saved, null, 2));
+                this.settings = { ...this.settings, ...saved };
+                console.log('Final settings:', JSON.stringify(this.settings, null, 2));
+                
+                // Parse timer duration
+                if (this.settings.timerDuration) {
+                    const [minutes, seconds] = this.settings.timerDuration.split(':').map(Number);
+                    this.defaultTimerSeconds = minutes * 60 + seconds;
+                    this.timerSeconds = this.defaultTimerSeconds;
+                }
+                
+                // Update form fields
+                document.getElementById('videoDirectory').value = this.settings.videoDirectory || '';
+                document.getElementById('loopVideoName').value = this.settings.loopVideoName || '';
+                document.getElementById('timerDuration').value = this.settings.timerDuration || '20:00';
+                
+                console.log('Settings loaded - Directory:', `"${this.settings.videoDirectory}"`);
+                console.log('Settings loaded - Loop video:', `"${this.settings.loopVideoName}"`);
+                console.log('Settings loaded - Timer:', `"${this.settings.timerDuration}"`);
+            }
+            
+            saveSettings() {
+                const dirValue = document.getElementById('videoDirectory').value;
+                const loopValue = document.getElementById('loopVideoName').value;
+                const timerValue = document.getElementById('timerDuration').value;
+                
+                console.log('=== SAVING SETTINGS ===');
+                console.log('Directory field value:', `"${dirValue}"`);
+                console.log('Loop video field value:', `"${loopValue}"`);
+                console.log('Timer field value:', `"${timerValue}"`);
+                
+                this.settings.videoDirectory = dirValue;
+                this.settings.loopVideoName = loopValue;
+                this.settings.timerDuration = timerValue;
+                
+                console.log('Settings object before save:', JSON.stringify(this.settings, null, 2));
+                
+                try {
+                    localStorage.setItem('podcastPlayerSettings', JSON.stringify(this.settings));
+                    console.log('✓ Successfully saved to localStorage');
+                    
+                    // Test read-back immediately
+                    const testRead = localStorage.getItem('podcastPlayerSettings');
+                    console.log('✓ Read-back test:', testRead);
+                } catch (error) {
+                    console.error('✗ Error saving to localStorage:', error);
+                }
+                
+                // Update timer default
+                if (this.settings.timerDuration) {
+                    const [minutes, seconds] = this.settings.timerDuration.split(':').map(Number);
+                    this.defaultTimerSeconds = minutes * 60 + seconds;
+                }
+                
+                this.showStatus('Settings saved');
+                this.closeSettings();
+            }
+            
+            setupEventListeners() {
+                console.log('Setting up event listeners...');
+                
+                // Settings icon
+                document.getElementById('settingsIcon').addEventListener('click', () => {
+                    console.log('Settings icon clicked');
+                    this.toggleSettings();
+                });
+                
+                // Video ended event
+                this.video.addEventListener('ended', () => {
+                    console.log('Video ended, returning to loop');
+                    this.playLoopVideo();
+                });
+                
+                // File upload handlers - removed, using file path only
+                
+                // Keyboard shortcuts
+                const handleKeydown = (e) => {
+                    // Don't handle shortcuts when settings panel is open
+                    if (this.settingsPanel.style.display === 'block') {
+                        // Only handle Escape to close settings
+                        if (e.key === 'Escape') {
+                            e.preventDefault();
+                            this.closeSettings();
+                        }
+                        return; // Exit early, don't process other shortcuts
+                    }
+                    
+                    console.log(`Key pressed: "${e.key}"`);
+                    
+                    if (e.key === 'F1') {
+                        e.preventDefault();
+                        console.log('F1 - opening settings');
+                        this.toggleSettings();
+                    } else if (e.key === ' ') {
+                        e.preventDefault();
+                        console.log('Spacebar - toggling timer');
+                        this.toggleTimer();
+                    } else if (e.key === 'r' || e.key === 'R') {
+                        e.preventDefault();
+                        console.log('R - resetting timer');
+                        this.resetTimer();
+                    } else if (e.key === 'l' || e.key === 'L') {
+                        e.preventDefault();
+                        console.log('L - playing loop video');
+                        this.playLoopVideo();
+                    } else if (e.key >= '1' && e.key <= '8') {
+                        e.preventDefault();
+                        const num = e.key.padStart(2, '0');
+                        console.log(`Number ${e.key} pressed - trying to load file ${num}`);
+                        this.tryLoadNumberedFile(num);
+                    }
+                };
+                
+                document.addEventListener('keydown', handleKeydown);
+                console.log('Keyboard event listener added');
+                
+                // Show help on mousemove, hide after delay
+                let helpTimeout;
+                document.addEventListener('mousemove', () => {
+                    document.body.classList.add('help-visible');
+                    clearTimeout(helpTimeout);
+                    helpTimeout = setTimeout(() => {
+                        document.body.classList.remove('help-visible');
+                    }, 3000);
+                });
+            }
+            
+            tryLoadNumberedFile(number) {
+                if (!this.settings.videoDirectory) {
+                    this.showStatus('Video directory not configured');
+                    return;
+                }
+                
+                // Try image extensions first, then video extensions
+                const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif'];
+                const videoExtensions = ['.mp4', '.mov', '.avi', '.webm'];
+                
+                console.log(`Trying to find file ${number}...`);
+                
+                // Try images first
+                for (const ext of imageExtensions) {
+                    const imagePath = this.buildFilePath(number, ext);
+                    console.log(`Trying image: ${imagePath}`);
+                    
+                    // Create a temporary image to test if it loads
+                    const testImg = new Image();
+                    testImg.onload = () => {
+                        console.log(`Found image: ${number}${ext}`);
+                        this.playNumberedImage(number, ext);
+                    };
+                    testImg.onerror = () => {
+                        console.log(`Image not found: ${number}${ext}`);
+                    };
+                    testImg.src = imagePath;
+                }
+                
+                // Also try videos
+                for (const ext of videoExtensions) {
+                    const videoPath = this.buildFilePath(number, ext);
+                    console.log(`Trying video: ${videoPath}`);
+                    
+                    // Create a temporary video to test if it loads
+                    const testVideo = document.createElement('video');
+                    testVideo.onloadedmetadata = () => {
+                        console.log(`Found video: ${number}${ext}`);
+                        this.playNumberedVideo(number, ext);
+                    };
+                    testVideo.onerror = () => {
+                        console.log(`Video not found: ${number}${ext}`);
+                    };
+                    testVideo.src = videoPath;
+                }
+            }
+            
+            buildFilePath(number, extension) {
+                let filePath;
+                if (this.settings.videoDirectory.startsWith('file://')) {
+                    filePath = `${this.settings.videoDirectory}/${number}${extension}`;
+                } else {
+                    filePath = `file:///${this.settings.videoDirectory}/${number}${extension}`.replace(/\\/g, '/');
+                }
+                return filePath;
+            }
+            
+            playLoopVideo() {
+                console.log('Playing loop video...');
+                
+                // Hide image if showing
+                this.hideImage();
+                
+                // Try file path (no more upload support)
+                if (this.settings.videoDirectory && this.settings.loopVideoName) {
+                    console.log('Trying file path for loop video');
+                    console.log('Directory:', this.settings.videoDirectory);
+                    console.log('Filename:', this.settings.loopVideoName);
+                    
+                    let videoPath;
+                    if (this.settings.videoDirectory.startsWith('file://')) {
+                        videoPath = `${this.settings.videoDirectory}/${this.settings.loopVideoName}`;
+                    } else {
+                        videoPath = `file:///${this.settings.videoDirectory}/${this.settings.loopVideoName}`.replace(/\\/g, '/');
+                    }
+                    
+                    console.log('Final video path:', videoPath);
+                    this.video.src = videoPath;
+                    this.video.loop = true;
+                    
+                    // Add a small delay to ensure the video element is ready
+                    setTimeout(() => {
+                        this.video.play().catch(e => {
+                            console.error('Video load error:', e);
+                            this.showStatus(`File access blocked. Check console for path.`);
+                        });
+                    }, 100);
+                    
+                    this.showStatus('Auto-starting loop video from settings');
+                } else {
+                    this.showStatus('No loop video configured');
+                    console.log('No loop video configured - missing directory or filename');
+                    console.log('Directory:', this.settings.videoDirectory);
+                    console.log('Filename:', this.settings.loopVideoName);
+                }
+            }
+            
+            playNumberedVideo(number, extension = '.mp4') {
+                console.log(`Playing numbered video ${number}${extension}...`);
+                
+                // Hide image if showing
+                this.hideImage();
+                
+                // Use file path
+                if (this.settings.videoDirectory) {
+                    console.log(`Using file path for video ${number}`);
+                    const videoPath = this.buildFilePath(number, extension);
+                    
+                    console.log(`Video ${number} path:`, videoPath);
+                    this.video.src = videoPath;
+                    this.video.loop = false;
+                    this.video.play().catch(e => {
+                        console.error('Video load error:', e);
+                        this.showStatus(`Could not load video ${number}${extension}`);
+                        this.playLoopVideo();
+                    });
+                    this.showStatus(`Playing video ${number}${extension}`);
+                } else {
+                    this.showStatus('Video directory not configured');
+                    console.log('No video directory configured');
+                }
+            }
+            
+            playNumberedImage(number, extension = '.jpg') {
+                console.log(`Displaying image ${number}${extension}...`);
+                
+                // Use file path
+                if (this.settings.videoDirectory) {
+                    console.log(`Using file path for image ${number}`);
+                    const imagePath = this.buildFilePath(number, extension);
+                    
+                    console.log(`Image ${number} path:`, imagePath);
+                    this.showImage(imagePath);
+                    this.showStatus(`Displaying image ${number}${extension} (press L to return to loop)`);
+                } else {
+                    this.showStatus(`Image ${number} not found`);
+                    console.log('No video directory configured');
+                }
+            }
+            
+            showImage(src) {
+                // Pause video
+                this.video.pause();
+                this.video.style.display = 'none';
+                
+                // Show image
+                this.image.src = src;
+                this.image.style.display = 'block';
+                console.log('Image displayed');
+            }
+            
+            hideImage() {
+                // Hide image
+                this.image.style.display = 'none';
+                this.image.src = '';
+                
+                // Show video
+                this.video.style.display = 'block';
+                console.log('Image hidden');
+            }
+            
+            toggleTimer() {
+                if (this.isTimerRunning) {
+                    this.stopTimer();
+                } else {
+                    this.startTimer();
+                }
+            }
+            
+            startTimer() {
+                if (!this.isTimerRunning) {
+                    this.isTimerRunning = true;
+                    this.timerInterval = setInterval(() => {
+                        if (this.timerSeconds > 0) {
+                            this.timerSeconds--;
+                        }
+                        this.updateTimerDisplay();
+                        // Don't stop the timer at 0 - keep it running for flashing
+                    }, 1000);
+                    this.showStatus('Timer started');
+                }
+            }
+            
+            stopTimer() {
+                if (this.isTimerRunning) {
+                    this.isTimerRunning = false;
+                    clearInterval(this.timerInterval);
+                    this.stopFlashing(); // Stop flashing when timer is stopped
+                    this.showStatus('Timer stopped');
+                }
+            }
+            
+            resetTimer() {
+                this.stopTimer();
+                this.timerSeconds = this.defaultTimerSeconds;
+                this.updateTimerDisplay();
+                this.showStatus('Timer reset');
+            }
+            
+            updateTimerDisplay() {
+                const minutes = Math.floor(this.timerSeconds / 60);
+                const seconds = this.timerSeconds % 60;
+                const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                this.timerOverlay.textContent = display;
+                
+                // Change color in last 5 minutes
+                if (this.timerSeconds <= 300 && this.timerSeconds > 0) {
+                    this.timerOverlay.classList.add('warning');
+                } else {
+                    this.timerOverlay.classList.remove('warning');
+                }
+                
+                // Start flashing and play sound when timer reaches 0
+                if (this.timerSeconds === 0 && !this.flashInterval) {
+                    console.log('*** Timer at 0 - starting flash interval and playing sound ***');
+                    this.startFlashing();
+                    this.playTimeUpSound();
+                } else if (this.timerSeconds > 0 && this.flashInterval) {
+                    console.log('Timer above 0 - stopping flash interval');
+                    this.stopFlashing();
+                }
+            }
+            
+            async playTimeUpSound() {
+                try {
+                    // Create audio context if it doesn't exist
+                    if (!this.audioContext) {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    
+                    // Resume context if suspended (browser auto-play policy)
+                    if (this.audioContext.state === 'suspended') {
+                        await this.audioContext.resume();
+                    }
+                    
+                    // Create a low, discrete tone with prominent attack
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    // Connect nodes
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    // Set up the sound - low, single-pitch tone
+                    oscillator.frequency.setValueAtTime(220, this.audioContext.currentTime); // Low A note
+                    oscillator.type = 'sine'; // Pure tone
+                    
+                    // Volume envelope - prominent attack, then sustain and fade
+                    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.15, this.audioContext.currentTime + 0.05); // Quick, prominent attack
+                    gainNode.gain.linearRampToValueAtTime(0.08, this.audioContext.currentTime + 0.2); // Drop to sustain level
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1.5); // Slow fade
+                    
+                    // Play for 1.5 seconds
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 1.5);
+                    
+                    console.log('Time up sound played');
+                } catch (error) {
+                    console.log('Could not play sound:', error);
+                }
+            }
+            
+            startFlashing() {
+                this.stopFlashing(); // Clear any existing flash interval
+                let isVisible = true;
+                
+                this.flashInterval = setInterval(() => {
+                    if (isVisible) {
+                        this.timerOverlay.style.opacity = '0.3';
+                        console.log('>>> Timer dimmed');
+                    } else {
+                        this.timerOverlay.style.opacity = '1';
+                        console.log('>>> Timer bright');
+                    }
+                    isVisible = !isVisible;
+                }, 500); // Flash every 500ms (twice per second for 1-second cycle)
+                
+                console.log('*** Flash interval started ***');
+            }
+            
+            stopFlashing() {
+                if (this.flashInterval) {
+                    clearInterval(this.flashInterval);
+                    this.flashInterval = null;
+                    this.timerOverlay.style.opacity = '1'; // Ensure it's visible
+                    console.log('*** Flash interval stopped ***');
+                }
+            }
+            
+            toggleSettings() {
+                if (this.settingsPanel.style.display === 'block') {
+                    this.closeSettings();
+                } else {
+                    this.openSettings();
+                }
+            }
+            
+            openSettings() {
+                this.settingsPanel.style.display = 'block';
+            }
+            
+            closeSettings() {
+                this.settingsPanel.style.display = 'none';
+            }
+            
+            showStatus(message) {
+                this.status.textContent = message;
+                console.log('Status:', message);
+                setTimeout(() => {
+                    this.status.textContent = '';
+                }, 5000);
+            }
+        }
+        
+        // Global functions for settings panel
+        function saveSettings() {
+            player.saveSettings();
+        }
+        
+        function closeSettings() {
+            player.closeSettings();
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, creating player...');
+            try {
+                player = new PodcastPlayer();
+                console.log('Player created successfully');
+            } catch (error) {
+                console.error('Error creating player:', error);
+            }
+        });
+        
+        console.log('Script loaded - VERSION WITH WORKING JS FLASHING');
+    </script>
+</body>
+</html>
