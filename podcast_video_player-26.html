@@ -228,14 +228,14 @@
         <video id="mainVideo"></video>
         <img id="mainImage" alt="Display Image">
         
-        <div id="timerOverlay">20:00</div>
+        <div id="timerOverlay">00:00</div>
         
         <button id="settingsIcon">
             <i class="fas fa-cog"></i>
         </button>
         
         <div id="helpText">
-            F1: Settings | SPACE: Timer Start/Stop | R: Timer Reset<br>
+            F1: Settings | SPACE: Timer Start/Pause | R: Timer Reset<br>
             L: Loop Video | 1-8: Play Videos/Images 01-08<br>
             F11: Fullscreen | ESC: Exit Fullscreen
         </div>
@@ -277,8 +277,9 @@
         </div>
         
         <div class="setting-group">
-            <label for="timerDuration">Default Timer Duration (MM:SS):</label>
+            <label for="timerDuration">Timer Limit (MM:SS):</label>
             <input type="text" id="timerDuration" placeholder="20:00" pattern="[0-9]{1,2}:[0-9]{2}">
+            <small>Timer counts up from 00:00 to this limit, then resets and continues</small>
         </div>
         
         <div class="setting-group">
@@ -308,11 +309,11 @@
                 this.settingsPanel = document.getElementById('settingsPanel');
                 this.status = document.getElementById('status');
                 
-                this.timerSeconds = 1200; // 20 minutes default
+                this.timerSeconds = 0; // Start at 0, count up
                 this.timerInterval = null;
                 this.isTimerRunning = false;
-                this.defaultTimerSeconds = 1200;
-                this.flashInterval = null; // For flashing at 0
+                this.defaultTimerSeconds = 1200; // 20 minutes limit
+                this.flashInterval = null; // For flashing
                 this.audioContext = null; // For sound generation
                 
                 this.settings = {
@@ -334,10 +335,15 @@
                     
                     this.setupEventListeners();
                     console.log('Event listeners set up');
-                    
+
                     this.updateTimerDisplay();
                     console.log('Timer display updated');
-                    
+
+                    // Start with red flashing at 00:00
+                    this.timerOverlay.classList.add('warning');
+                    this.startFlashing();
+                    console.log('Initial state: 00:00 flashing red');
+
                     // Auto-start loop video if configured
                     // Allow SharePoint URLs without loopVideoName (full URL in directory field)
                     if (this.settings.videoDirectory && (this.settings.loopVideoName || this.settings.videoDirectory.startsWith('http'))) {
@@ -359,11 +365,12 @@
                 this.settings = { ...this.settings, ...saved };
                 console.log('Final settings:', JSON.stringify(this.settings, null, 2));
                 
-                // Parse timer duration
+                // Parse timer duration (sets the limit, not the starting value)
                 if (this.settings.timerDuration) {
                     const [minutes, seconds] = this.settings.timerDuration.split(':').map(Number);
                     this.defaultTimerSeconds = minutes * 60 + seconds;
-                    this.timerSeconds = this.defaultTimerSeconds;
+                    // Always start at 0 (count up timer)
+                    this.timerSeconds = 0;
                 }
                 
                 // Update form fields
@@ -911,12 +918,19 @@
             startTimer() {
                 if (!this.isTimerRunning) {
                     this.isTimerRunning = true;
+                    // Stop flashing when starting (if at initial 00:00 state)
+                    this.stopFlashing();
                     this.timerInterval = setInterval(() => {
-                        if (this.timerSeconds > 0) {
-                            this.timerSeconds--;
-                        }
+                        this.timerSeconds++;
                         this.updateTimerDisplay();
-                        // Don't stop the timer at 0 - keep it running for flashing
+
+                        // At 20:00 (1200 seconds), play sound and auto-reset
+                        if (this.timerSeconds >= this.defaultTimerSeconds) {
+                            console.log('Timer reached limit - playing sound and resetting');
+                            this.playTimeUpSound();
+                            this.timerSeconds = 0;
+                            // Don't stop the timer - keep running
+                        }
                     }, 1000);
                     this.showStatus('Timer started');
                 }
@@ -933,8 +947,11 @@
             
             resetTimer() {
                 this.stopTimer();
-                this.timerSeconds = this.defaultTimerSeconds;
+                this.timerSeconds = 0;
                 this.updateTimerDisplay();
+                // Start flashing red when reset to 00:00
+                this.timerOverlay.classList.add('warning');
+                this.startFlashing();
                 this.showStatus('Timer reset');
             }
             
@@ -942,24 +959,33 @@
                 const minutes = Math.floor(this.timerSeconds / 60);
                 const seconds = this.timerSeconds % 60;
                 const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                
+
                 this.timerOverlay.textContent = display;
-                
-                // Change color in last 5 minutes
-                if (this.timerSeconds <= 300 && this.timerSeconds > 0) {
-                    this.timerOverlay.classList.add('warning');
-                } else {
+
+                // Color and flashing logic for count-up timer:
+                // 0-899 seconds (0:00-14:59): white, no flashing
+                // 900-1139 seconds (15:00-18:59): solid red, no flashing
+                // 1140-1199 seconds (19:00-19:59): flashing red
+
+                if (this.timerSeconds < 900) {
+                    // 0:00-14:59: White, no flashing
                     this.timerOverlay.classList.remove('warning');
-                }
-                
-                // Start flashing and play sound when timer reaches 0
-                if (this.timerSeconds === 0 && !this.flashInterval) {
-                    console.log('*** Timer at 0 - starting flash interval and playing sound ***');
-                    this.startFlashing();
-                    this.playTimeUpSound();
-                } else if (this.timerSeconds > 0 && this.flashInterval) {
-                    console.log('Timer above 0 - stopping flash interval');
-                    this.stopFlashing();
+                    if (this.flashInterval && this.isTimerRunning) {
+                        this.stopFlashing();
+                    }
+                } else if (this.timerSeconds >= 900 && this.timerSeconds < 1140) {
+                    // 15:00-18:59: Solid red, no flashing
+                    this.timerOverlay.classList.add('warning');
+                    if (this.flashInterval) {
+                        this.stopFlashing();
+                    }
+                } else if (this.timerSeconds >= 1140 && this.timerSeconds < this.defaultTimerSeconds) {
+                    // 19:00-19:59: Flashing red
+                    this.timerOverlay.classList.add('warning');
+                    if (!this.flashInterval && this.isTimerRunning) {
+                        console.log('Starting flash at 19:00');
+                        this.startFlashing();
+                    }
                 }
             }
             
