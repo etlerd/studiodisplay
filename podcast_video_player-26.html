@@ -271,9 +271,10 @@
         
         <div class="setting-group">
             <small style="color: #aaa; line-height: 1.5;">
-                <strong>Numbered files (01, 02, 03, etc.):</strong> Upload files named 01.png, 02.mp4, 03.mp3, etc. to your hosting location (e.g., same GitHub Release as your loop video).<br>
+                <strong>Numbered files (01, 02, 03, etc.):</strong> Upload files to your hosting location (e.g., same GitHub Release as your loop video).<br>
                 <strong>Regular keys 1-8:</strong> Play videos/images (formats: .mp4, .mov, .jpg, .png, .gif, .avi, .webm)<br>
-                <strong>Numpad keys 1-8:</strong> Play sounds over current media (formats: .mp3, .wav, .m4a)
+                <strong>Numpad keys 1-8:</strong> Play sounds over current media (formats: .mp3, .wav, .m4a)<br>
+                <strong>Sound file naming:</strong> Name files as 01.m4a, 02.mp3, etc. (optionally: 01-sound.m4a, 01-audio.wav)
             </small>
         </div>
         
@@ -458,7 +459,7 @@
                         return; // Exit early, don't process other shortcuts
                     }
 
-                    console.log(`Key pressed: "${e.key}"`);
+                    console.log(`Key pressed: key="${e.key}" code="${e.code}"`);
 
                     if (e.key === 'F1') {
                         e.preventDefault();
@@ -476,20 +477,19 @@
                         e.preventDefault();
                         console.log('L - playing loop video');
                         this.playLoopVideo();
+                    } else if (e.code >= 'Numpad1' && e.code <= 'Numpad8') {
+                        // Handle numpad keys (Numpad1-Numpad8) for sound playback
+                        // Must check e.code (not e.key) because with NumLock on, e.key returns "1" just like regular keys
+                        e.preventDefault();
+                        const numpadDigit = e.code.charAt(6); // Extract digit from "NumpadX"
+                        const num = numpadDigit.padStart(2, '0');
+                        console.log(`Numpad ${numpadDigit} pressed - trying to play sound ${num}`);
+                        this.tryLoadNumberedSound(num);
                     } else if (e.key >= '1' && e.key <= '8') {
                         e.preventDefault();
                         const num = e.key.padStart(2, '0');
                         console.log(`Number ${e.key} pressed - trying to load file ${num}`);
                         this.tryLoadNumberedFile(num);
-                    } else if (e.key.startsWith('Numpad') && e.key.length === 7) {
-                        // Handle numpad keys (Numpad1-Numpad8) for sound playback
-                        const numpadDigit = e.key.charAt(6); // Extract digit from "NumpadX"
-                        if (numpadDigit >= '1' && numpadDigit <= '8') {
-                            e.preventDefault();
-                            const num = numpadDigit.padStart(2, '0');
-                            console.log(`Numpad ${numpadDigit} pressed - trying to play sound ${num}`);
-                            this.tryLoadNumberedSound(num);
-                        }
                     }
                 };
                 
@@ -516,23 +516,36 @@
                 // Only try audio extensions for numpad keys
                 const audioExtensions = ['.mp3', '.wav', '.m4a'];
 
+                // Common naming patterns to try (in order of preference)
+                // Supports files like: 01.m4a, 01-sound.m4a, 01-sad-trombone.m4a, 01_audio.m4a, etc.
+                const namingPatterns = [
+                    '',           // Try exact: 01.m4a
+                    '-sound',     // Try: 01-sound.m4a
+                    '-audio',     // Try: 01-audio.m4a
+                    '-sfx',       // Try: 01-sfx.m4a
+                    '_sound',     // Try: 01_sound.m4a
+                    '_audio',     // Try: 01_audio.m4a
+                ];
+
                 console.log(`Trying to find sound file ${number}...`);
 
-                // Try audio files
+                // Try each extension with each naming pattern
                 for (const ext of audioExtensions) {
-                    const audioPath = this.buildFilePath(number, ext);
-                    console.log(`Trying audio: ${audioPath}`);
+                    for (const pattern of namingPatterns) {
+                        const audioPath = this.buildFilePath(number, `${pattern}${ext}`);
+                        console.log(`Trying audio: ${audioPath}`);
 
-                    // Create a temporary audio to test if it loads
-                    const testAudio = new Audio();
-                    testAudio.onloadedmetadata = () => {
-                        console.log(`Found audio: ${number}${ext}`);
-                        this.playNumberedSound(number, ext);
-                    };
-                    testAudio.onerror = () => {
-                        console.log(`Audio not found: ${number}${ext}`);
-                    };
-                    testAudio.src = audioPath;
+                        // Create a temporary audio to test if it loads
+                        const testAudio = new Audio();
+                        testAudio.onloadedmetadata = () => {
+                            console.log(`Found audio: ${number}${pattern}${ext}`);
+                            this.playNumberedSound(number, `${pattern}${ext}`);
+                        };
+                        testAudio.onerror = () => {
+                            console.log(`Audio not found: ${number}${pattern}${ext}`);
+                        };
+                        testAudio.src = audioPath;
+                    }
                 }
             }
 
