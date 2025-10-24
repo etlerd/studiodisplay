@@ -98,12 +98,19 @@ https://github.com/USER/REPO/releases/download/TAG/video.mp4
 https://github.com/etlerd/studiodisplay/releases/download/v1.0/background.mp4
 ```
 
-**In the app settings**:
-- Video Directory: Leave empty OR use the full URL
-- Loop Video Filename: Leave empty (the URL is complete)
-- Or use base path + filename approach:
-  - Directory: `https://github.com/USER/REPO/releases/download/TAG/`
-  - Filename: `video.mp4`
+**In the app settings** (two approaches):
+
+**Approach 1: Base Path + Filename (RECOMMENDED)**
+This approach allows numbered files (01, 02, 03, etc.) to work:
+- Video Directory: `https://github.com/USER/REPO/releases/download/TAG/`
+- Loop Video Filename: `video.mp4`
+
+**Approach 2: Full URL (Only for loop video)**
+This only works for the loop video. Numbered files won't work with this approach:
+- Video Directory: `https://github.com/USER/REPO/releases/download/TAG/video.mp4`
+- Loop Video Filename: (leave empty)
+
+**💡 Tip**: Use Approach 1 (base path + filename) if you plan to use numbered files (pressing 1-8 keys)
 
 ---
 
@@ -290,16 +297,24 @@ This is the best option because:
 **Quick start guide**:
 1. Go to your repo's Releases page: `https://github.com/YOUR_USERNAME/YOUR_REPO/releases`
 2. Click "Create a new release"
-3. Create a tag (e.g., "v1.0" or "videos-v1")
-4. Drag and drop your video files into the assets section
+3. Create a tag (e.g., "v1.0" or "studio-display")
+4. Drag and drop your video files AND numbered files (01.png, 02.mp4, etc.) into the assets section
 5. Click "Publish release"
-6. Right-click each video file → "Copy link address"
-7. Paste the full URL into the app's "Video Directory" field
-8. Leave "Loop Video Filename" empty
+6. Right-click any asset → "Copy link address"
+7. Copy everything EXCEPT the filename to get the base path
+8. Configure the app settings (see below)
 9. Save settings and press L to test!
 
-**Example settings**:
-- Video Directory: `https://github.com/etlerd/studiodisplay/releases/download/v1.0/background.mp4`
+**Example settings (RECOMMENDED - supports numbered files)**:
+- Video Directory: `https://github.com/etlerd/studiodisplay/releases/download/studio-display/`
+- Loop Video Filename: `SCP-Motion-Graphic-2025.mp4`
+
+This approach allows:
+- Press **L** → Play loop video
+- Press **1-8** → Play numbered files (01.png, 02.mp4, etc.)
+
+**Alternative (loop video only, no numbered files)**:
+- Video Directory: `https://github.com/etlerd/studiodisplay/releases/download/studio-display/SCP-Motion-Graphic-2025.mp4`
 - Loop Video Filename: (leave empty)
 
 ---

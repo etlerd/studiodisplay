@@ -247,32 +247,32 @@
         <h2>Settings</h2>
         
         <div class="setting-group">
-            <label for="videoDirectory">Video Directory Path or URL:</label>
-            <input type="text" id="videoDirectory" placeholder="https://raw.githubusercontent.com/user/repo/main/videos/">
+            <label for="videoDirectory">Video Directory Base Path:</label>
+            <input type="text" id="videoDirectory" placeholder="https://github.com/user/repo/releases/download/TAG/">
             <small>
-                <strong>Local files:</strong> Use file:// format. Replace spaces with %20<br>
-                Example: file:///C:/Users/name/Videos<br>
-                <strong>Remote files:</strong> Use direct URLs (GitHub, CDN, web server)<br>
-                Example: https://raw.githubusercontent.com/user/repo/main/videos/<br>
-                <strong>⚠️ SharePoint/OneDrive NOT supported</strong> (CORS blocked) - See HOSTING_GUIDE.md
+                <strong>Recommended:</strong> GitHub Releases base path (ends with /)<br>
+                Example: https://github.com/user/repo/releases/download/studio-display/<br>
+                <strong>Local files:</strong> Use file:// format (file:///C:/Users/name/Videos/)<br>
+                <strong>⚠️ SharePoint/OneDrive NOT supported</strong> (CORS blocked)<br>
+                See HOSTING_GUIDE.md for setup instructions
             </small>
         </div>
 
         <div class="setting-group">
-            <label for="loopVideoName">Loop Video Filename (or leave empty for full URL):</label>
-            <input type="text" id="loopVideoName" placeholder="background.mp4 or leave empty for full URL">
+            <label for="loopVideoName">Loop Video Filename:</label>
+            <input type="text" id="loopVideoName" placeholder="background.mp4">
             <small>
-                <strong>With directory path:</strong> Enter just the filename with %20 for spaces<br>
-                Example: background.mp4 or Motion%20graphic.mp4<br>
-                <strong>Full URL:</strong> Leave empty and put complete URL in directory field above<br>
-                Example: https://github.com/user/repo/releases/download/v1.0/video.mp4
+                <strong>Enter just the filename</strong> (will be appended to base path above)<br>
+                Example: background.mp4 or Motion%20Graphic.mp4<br>
+                This approach allows numbered files (01, 02, 03, etc.) to work when you press 1-8<br>
+                <strong>Advanced:</strong> Leave empty and put full URL in directory field (numbered files won't work)
             </small>
         </div>
         
         <div class="setting-group">
             <small style="color: #aaa; line-height: 1.5;">
-                <strong>Numbered files (01, 02, 03, etc.):</strong> Place files starting with 01, 02, 03, etc. in your video directory. 
-                The app will automatically find them when you press number keys. Supported formats: .mp4, .mov, .jpg, .png, .gif
+                <strong>Numbered files (01, 02, 03, etc.):</strong> Upload files named 01.png, 02.mp4, 03.jpg, etc. to your hosting location (e.g., same GitHub Release as your loop video).
+                Press number keys 1-8 to instantly display/play them. Supported formats: .mp4, .mov, .jpg, .png, .gif, .avi, .webm
             </small>
         </div>
         
