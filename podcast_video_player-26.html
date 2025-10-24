@@ -236,7 +236,7 @@
         
         <div id="helpText">
             F1: Settings | SPACE: Timer Start/Pause | R: Timer Reset<br>
-            L: Loop Video | 1-8: Play Videos/Images 01-08<br>
+            L: Loop Video | 1-8: Play Videos/Images | Numpad 1-8: Play Sounds<br>
             F11: Fullscreen | ESC: Exit Fullscreen
         </div>
         
@@ -247,8 +247,8 @@
         <h2>Settings</h2>
         
         <div class="setting-group">
-            <label for="videoDirectory">Video Directory Base Path:</label>
-            <input type="text" id="videoDirectory" placeholder="https://github.com/user/repo/releases/download/TAG/">
+            <label for="mediaDirectory">Media Directory Base Path:</label>
+            <input type="text" id="mediaDirectory" placeholder="https://github.com/user/repo/releases/download/TAG/">
             <small>
                 <strong>Recommended:</strong> GitHub Releases base path (ends with /)<br>
                 Example: https://github.com/user/repo/releases/download/studio-display/<br>
@@ -271,8 +271,9 @@
         
         <div class="setting-group">
             <small style="color: #aaa; line-height: 1.5;">
-                <strong>Numbered files (01, 02, 03, etc.):</strong> Upload files named 01.png, 02.mp4, 03.jpg, etc. to your hosting location (e.g., same GitHub Release as your loop video).
-                Press number keys 1-8 to instantly display/play them. Supported formats: .mp4, .mov, .jpg, .png, .gif, .avi, .webm
+                <strong>Numbered files (01, 02, 03, etc.):</strong> Upload files named 01.png, 02.mp4, 03.mp3, etc. to your hosting location (e.g., same GitHub Release as your loop video).<br>
+                <strong>Regular keys 1-8:</strong> Play videos/images (formats: .mp4, .mov, .jpg, .png, .gif, .avi, .webm)<br>
+                <strong>Numpad keys 1-8:</strong> Play sounds over current media (formats: .mp3, .wav, .m4a)
             </small>
         </div>
         
@@ -317,7 +318,7 @@
                 this.audioContext = null; // For sound generation
                 
                 this.settings = {
-                    videoDirectory: '',
+                    mediaDirectory: '',
                     loopVideoName: '',
                     timerDuration: '20:00',
                     autoStartTimer: false
@@ -346,7 +347,7 @@
 
                     // Auto-start loop video if configured
                     // Allow SharePoint URLs without loopVideoName (full URL in directory field)
-                    if (this.settings.videoDirectory && (this.settings.loopVideoName || this.settings.videoDirectory.startsWith('http'))) {
+                    if (this.settings.mediaDirectory && (this.settings.loopVideoName || this.settings.mediaDirectory.startsWith('http'))) {
                         console.log('Auto-starting loop video...');
                         this.playLoopVideo();
                     } else {
@@ -362,9 +363,17 @@
             loadSettings() {
                 const saved = JSON.parse(localStorage.getItem('podcastPlayerSettings') || '{}');
                 console.log('Raw saved settings:', JSON.stringify(saved, null, 2));
+
+                // Migrate old videoDirectory setting to mediaDirectory
+                if (saved.videoDirectory && !saved.mediaDirectory) {
+                    saved.mediaDirectory = saved.videoDirectory;
+                    delete saved.videoDirectory;
+                    console.log('Migrated videoDirectory to mediaDirectory');
+                }
+
                 this.settings = { ...this.settings, ...saved };
                 console.log('Final settings:', JSON.stringify(this.settings, null, 2));
-                
+
                 // Parse timer duration (sets the limit, not the starting value)
                 if (this.settings.timerDuration) {
                     const [minutes, seconds] = this.settings.timerDuration.split(':').map(Number);
@@ -372,28 +381,28 @@
                     // Always start at 0 (count up timer)
                     this.timerSeconds = 0;
                 }
-                
+
                 // Update form fields
-                document.getElementById('videoDirectory').value = this.settings.videoDirectory || '';
+                document.getElementById('mediaDirectory').value = this.settings.mediaDirectory || '';
                 document.getElementById('loopVideoName').value = this.settings.loopVideoName || '';
                 document.getElementById('timerDuration').value = this.settings.timerDuration || '20:00';
-                
-                console.log('Settings loaded - Directory:', `"${this.settings.videoDirectory}"`);
+
+                console.log('Settings loaded - Directory:', `"${this.settings.mediaDirectory}"`);
                 console.log('Settings loaded - Loop video:', `"${this.settings.loopVideoName}"`);
                 console.log('Settings loaded - Timer:', `"${this.settings.timerDuration}"`);
             }
             
             saveSettings() {
-                const dirValue = document.getElementById('videoDirectory').value;
+                const dirValue = document.getElementById('mediaDirectory').value;
                 const loopValue = document.getElementById('loopVideoName').value;
                 const timerValue = document.getElementById('timerDuration').value;
-                
+
                 console.log('=== SAVING SETTINGS ===');
                 console.log('Directory field value:', `"${dirValue}"`);
                 console.log('Loop video field value:', `"${loopValue}"`);
                 console.log('Timer field value:', `"${timerValue}"`);
-                
-                this.settings.videoDirectory = dirValue;
+
+                this.settings.mediaDirectory = dirValue;
                 this.settings.loopVideoName = loopValue;
                 this.settings.timerDuration = timerValue;
                 
@@ -448,9 +457,9 @@
                         }
                         return; // Exit early, don't process other shortcuts
                     }
-                    
+
                     console.log(`Key pressed: "${e.key}"`);
-                    
+
                     if (e.key === 'F1') {
                         e.preventDefault();
                         console.log('F1 - opening settings');
@@ -472,6 +481,15 @@
                         const num = e.key.padStart(2, '0');
                         console.log(`Number ${e.key} pressed - trying to load file ${num}`);
                         this.tryLoadNumberedFile(num);
+                    } else if (e.key.startsWith('Numpad') && e.key.length === 7) {
+                        // Handle numpad keys (Numpad1-Numpad8) for sound playback
+                        const numpadDigit = e.key.charAt(6); // Extract digit from "NumpadX"
+                        if (numpadDigit >= '1' && numpadDigit <= '8') {
+                            e.preventDefault();
+                            const num = numpadDigit.padStart(2, '0');
+                            console.log(`Numpad ${numpadDigit} pressed - trying to play sound ${num}`);
+                            this.tryLoadNumberedSound(num);
+                        }
                     }
                 };
                 
@@ -489,23 +507,53 @@
                 });
             }
             
-            tryLoadNumberedFile(number) {
-                if (!this.settings.videoDirectory) {
-                    this.showStatus('Video directory not configured');
+            tryLoadNumberedSound(number) {
+                if (!this.settings.mediaDirectory) {
+                    this.showStatus('Media directory not configured');
                     return;
                 }
-                
-                // Try image extensions first, then video extensions
+
+                // Only try audio extensions for numpad keys
+                const audioExtensions = ['.mp3', '.wav', '.m4a'];
+
+                console.log(`Trying to find sound file ${number}...`);
+
+                // Try audio files
+                for (const ext of audioExtensions) {
+                    const audioPath = this.buildFilePath(number, ext);
+                    console.log(`Trying audio: ${audioPath}`);
+
+                    // Create a temporary audio to test if it loads
+                    const testAudio = new Audio();
+                    testAudio.onloadedmetadata = () => {
+                        console.log(`Found audio: ${number}${ext}`);
+                        this.playNumberedSound(number, ext);
+                    };
+                    testAudio.onerror = () => {
+                        console.log(`Audio not found: ${number}${ext}`);
+                    };
+                    testAudio.src = audioPath;
+                }
+            }
+
+            tryLoadNumberedFile(number) {
+                if (!this.settings.mediaDirectory) {
+                    this.showStatus('Media directory not configured');
+                    return;
+                }
+
+                // Try image extensions first, then video extensions, then audio extensions
                 const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif'];
                 const videoExtensions = ['.mp4', '.mov', '.avi', '.webm'];
-                
+                const audioExtensions = ['.mp3', '.wav', '.m4a'];
+
                 console.log(`Trying to find file ${number}...`);
-                
+
                 // Try images first
                 for (const ext of imageExtensions) {
                     const imagePath = this.buildFilePath(number, ext);
                     console.log(`Trying image: ${imagePath}`);
-                    
+
                     // Create a temporary image to test if it loads
                     const testImg = new Image();
                     testImg.onload = () => {
@@ -517,12 +565,12 @@
                     };
                     testImg.src = imagePath;
                 }
-                
+
                 // Also try videos
                 for (const ext of videoExtensions) {
                     const videoPath = this.buildFilePath(number, ext);
                     console.log(`Trying video: ${videoPath}`);
-                    
+
                     // Create a temporary video to test if it loads
                     const testVideo = document.createElement('video');
                     testVideo.onloadedmetadata = () => {
@@ -534,20 +582,37 @@
                     };
                     testVideo.src = videoPath;
                 }
+
+                // Also try audio files
+                for (const ext of audioExtensions) {
+                    const audioPath = this.buildFilePath(number, ext);
+                    console.log(`Trying audio: ${audioPath}`);
+
+                    // Create a temporary audio to test if it loads
+                    const testAudio = new Audio();
+                    testAudio.onloadedmetadata = () => {
+                        console.log(`Found audio: ${number}${ext}`);
+                        this.playNumberedSound(number, ext);
+                    };
+                    testAudio.onerror = () => {
+                        console.log(`Audio not found: ${number}${ext}`);
+                    };
+                    testAudio.src = audioPath;
+                }
             }
             
             buildFilePath(number, extension) {
                 let filePath;
                 // Handle HTTPS/HTTP URLs (like SharePoint)
-                if (this.settings.videoDirectory.startsWith('https://') || this.settings.videoDirectory.startsWith('http://')) {
+                if (this.settings.mediaDirectory.startsWith('https://') || this.settings.mediaDirectory.startsWith('http://')) {
                     // For remote URLs, append the filename
                     // Remove trailing slash if present
-                    const baseUrl = this.settings.videoDirectory.replace(/\/$/, '');
+                    const baseUrl = this.settings.mediaDirectory.replace(/\/$/, '');
                     filePath = `${baseUrl}/${number}${extension}`;
-                } else if (this.settings.videoDirectory.startsWith('file://')) {
-                    filePath = `${this.settings.videoDirectory}/${number}${extension}`;
+                } else if (this.settings.mediaDirectory.startsWith('file://')) {
+                    filePath = `${this.settings.mediaDirectory}/${number}${extension}`;
                 } else {
-                    filePath = `file:///${this.settings.videoDirectory}/${number}${extension}`.replace(/\\/g, '/');
+                    filePath = `file:///${this.settings.mediaDirectory}/${number}${extension}`.replace(/\\/g, '/');
                 }
                 return filePath;
             }
@@ -717,17 +782,17 @@
                 this.hideImage();
 
                 // Try file path (no more upload support)
-                if (this.settings.videoDirectory && (this.settings.loopVideoName || this.settings.videoDirectory.startsWith('http'))) {
+                if (this.settings.mediaDirectory && (this.settings.loopVideoName || this.settings.mediaDirectory.startsWith('http'))) {
                     console.log('Trying file path for loop video');
-                    console.log('Directory:', this.settings.videoDirectory);
+                    console.log('Directory:', this.settings.mediaDirectory);
                     console.log('Filename:', this.settings.loopVideoName);
 
                     let videoPath;
                     // Handle HTTPS/HTTP URLs
-                    if (this.settings.videoDirectory.startsWith('https://') || this.settings.videoDirectory.startsWith('http://')) {
+                    if (this.settings.mediaDirectory.startsWith('https://') || this.settings.mediaDirectory.startsWith('http://')) {
                         // Check for unsupported hosting providers
-                        if (this.isUnsupportedHost(this.settings.videoDirectory)) {
-                            const hostName = this.getHostName(this.settings.videoDirectory);
+                        if (this.isUnsupportedHost(this.settings.mediaDirectory)) {
+                            const hostName = this.getHostName(this.settings.mediaDirectory);
                             this.showStatus(`${hostName} NOT supported - CORS blocked. See HOSTING_GUIDE.md for alternatives.`);
                             console.error(`%c${hostName} URLs are not supported`, 'color: red; font-weight: bold');
                             console.log('%cWhy this doesn\'t work:', 'font-weight: bold');
@@ -746,7 +811,7 @@
                         }
 
                         // Check for SharePoint folder/viewer links
-                        if (this.settings.videoDirectory.includes(':f:/') || this.settings.videoDirectory.includes(':v:/')) {
+                        if (this.settings.mediaDirectory.includes(':f:/') || this.settings.mediaDirectory.includes(':v:/')) {
                             this.showStatus('Sharing links not supported. Use direct video URLs. See HOSTING_GUIDE.md');
                             console.error('Detected sharing/viewer link. These require authentication and don\'t work for embedding.');
                             console.log('Please use a direct video file URL instead.');
@@ -755,15 +820,15 @@
 
                         // If loopVideoName is provided, append it; otherwise use the URL as-is
                         if (this.settings.loopVideoName && this.settings.loopVideoName.trim() !== '') {
-                            const baseUrl = this.settings.videoDirectory.replace(/\/$/, '');
+                            const baseUrl = this.settings.mediaDirectory.replace(/\/$/, '');
                             videoPath = `${baseUrl}/${this.settings.loopVideoName}`;
                         } else {
-                            videoPath = this.settings.videoDirectory;
+                            videoPath = this.settings.mediaDirectory;
                         }
-                    } else if (this.settings.videoDirectory.startsWith('file://')) {
-                        videoPath = `${this.settings.videoDirectory}/${this.settings.loopVideoName}`;
+                    } else if (this.settings.mediaDirectory.startsWith('file://')) {
+                        videoPath = `${this.settings.mediaDirectory}/${this.settings.loopVideoName}`;
                     } else {
-                        videoPath = `file:///${this.settings.videoDirectory}/${this.settings.loopVideoName}`.replace(/\\/g, '/');
+                        videoPath = `file:///${this.settings.mediaDirectory}/${this.settings.loopVideoName}`.replace(/\\/g, '/');
                     }
 
                     console.log('Final video path:', videoPath);
@@ -813,7 +878,7 @@
                 } else {
                     this.showStatus('No loop video configured');
                     console.log('No loop video configured - missing directory or filename');
-                    console.log('Directory:', this.settings.videoDirectory);
+                    console.log('Directory:', this.settings.mediaDirectory);
                     console.log('Filename:', this.settings.loopVideoName);
                 }
             }
@@ -825,7 +890,7 @@
                 this.hideImage();
 
                 // Use file path
-                if (this.settings.videoDirectory) {
+                if (this.settings.mediaDirectory) {
                     console.log(`Using file path for video ${number}`);
                     const videoPath = this.buildFilePath(number, extension);
 
@@ -843,8 +908,8 @@
 
                     this.showStatus(`Playing video ${number}${extension}`);
                 } else {
-                    this.showStatus('Video directory not configured');
-                    console.log('No video directory configured');
+                    this.showStatus('Media directory not configured');
+                    console.log('No media directory configured');
                 }
             }
             
@@ -852,7 +917,7 @@
                 console.log(`Displaying image ${number}${extension}...`);
 
                 // Use file path
-                if (this.settings.videoDirectory) {
+                if (this.settings.mediaDirectory) {
                     console.log(`Using file path for image ${number}`);
                     const imagePath = this.buildFilePath(number, extension);
 
@@ -861,7 +926,52 @@
                     this.showStatus(`Displaying image ${number}${extension} (press L to return to loop)`);
                 } else {
                     this.showStatus(`Image ${number} not found`);
-                    console.log('No video directory configured');
+                    console.log('No media directory configured');
+                }
+            }
+
+            playNumberedSound(number, extension = '.mp3') {
+                console.log(`Playing sound ${number}${extension}...`);
+
+                // Use file path
+                if (this.settings.mediaDirectory) {
+                    console.log(`Using file path for sound ${number}`);
+                    const soundPath = this.buildFilePath(number, extension);
+
+                    console.log(`Sound ${number} path:`, soundPath);
+
+                    // Create new Audio element for this sound
+                    // This allows multiple sounds to play simultaneously
+                    const audio = new Audio(soundPath);
+
+                    // Handle load errors
+                    audio.onerror = (e) => {
+                        console.error('Sound load error:', e);
+                        this.showStatus(`Could not load sound ${number}${extension}`);
+                    };
+
+                    // Play the sound once loaded
+                    audio.oncanplay = () => {
+                        console.log('Sound can play');
+                        audio.play()
+                            .then(() => {
+                                console.log('Sound playing successfully');
+                                this.showStatus(`Playing sound ${number}${extension}`);
+                            })
+                            .catch(e => {
+                                console.error('Play failed:', e);
+                                this.showStatus(`Could not play sound ${number}${extension}`);
+                            });
+                    };
+
+                    // Clean up after sound finishes playing
+                    audio.onended = () => {
+                        console.log('Sound finished playing');
+                        audio.src = '';
+                    };
+                } else {
+                    this.showStatus('Media directory not configured');
+                    console.log('No media directory configured');
                 }
             }
 
