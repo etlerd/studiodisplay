@@ -542,6 +542,138 @@
                 }
                 return filePath;
             }
+
+            /**
+             * Load video source with proper format detection and error handling
+             * @param {string} videoPath - The path to the video file
+             * @param {boolean} shouldLoop - Whether the video should loop
+             * @returns {Promise} Resolves when video is loaded and playing
+             */
+            async loadVideoSource(videoPath, shouldLoop = false) {
+                console.log('Loading video source:', videoPath);
+
+                // Clear any existing source elements
+                while (this.video.firstChild) {
+                    this.video.removeChild(this.video.firstChild);
+                }
+
+                // Reset video element
+                this.video.pause();
+                this.video.removeAttribute('src');
+                this.video.load();
+
+                // Set loop property
+                this.video.loop = shouldLoop;
+
+                // Detect MIME type from file extension
+                const mimeType = this.getMimeType(videoPath);
+                console.log('Detected MIME type:', mimeType);
+
+                // Create source element with explicit MIME type
+                const source = document.createElement('source');
+                source.src = videoPath;
+                if (mimeType) {
+                    source.type = mimeType;
+                }
+
+                // Add error handling for the source element
+                source.onerror = (e) => {
+                    console.error('Source element error:', e);
+                    console.error('Failed to load:', videoPath);
+                };
+
+                this.video.appendChild(source);
+
+                // Return a promise that resolves when video can play
+                return new Promise((resolve, reject) => {
+                    let errorTimer;
+                    let loadTimer;
+
+                    const cleanup = () => {
+                        clearTimeout(errorTimer);
+                        clearTimeout(loadTimer);
+                        this.video.removeEventListener('canplay', onCanPlay);
+                        this.video.removeEventListener('error', onError);
+                        this.video.removeEventListener('loadeddata', onLoadedData);
+                    };
+
+                    const onCanPlay = () => {
+                        console.log('Video can play');
+                        cleanup();
+                        this.video.play()
+                            .then(() => {
+                                console.log('Video playing successfully');
+                                this.showStatus('Video loaded and playing');
+                                resolve();
+                            })
+                            .catch(e => {
+                                console.error('Play failed:', e);
+                                reject(e);
+                            });
+                    };
+
+                    const onLoadedData = () => {
+                        console.log('Video data loaded');
+                    };
+
+                    const onError = (e) => {
+                        console.error('Video element error:', e);
+                        cleanup();
+
+                        // Create a detailed error object
+                        const error = new Error(this.video.error ? this.video.error.message : 'Unknown video error');
+                        error.name = this.video.error ? this.getMediaErrorName(this.video.error.code) : 'UnknownError';
+                        error.code = this.video.error ? this.video.error.code : 0;
+
+                        reject(error);
+                    };
+
+                    this.video.addEventListener('canplay', onCanPlay, { once: true });
+                    this.video.addEventListener('loadeddata', onLoadedData, { once: true });
+                    this.video.addEventListener('error', onError, { once: true });
+
+                    // Set a timeout for loading (30 seconds)
+                    loadTimer = setTimeout(() => {
+                        cleanup();
+                        reject(new Error('Video loading timeout after 30 seconds'));
+                    }, 30000);
+
+                    // Trigger load
+                    this.video.load();
+                });
+            }
+
+            /**
+             * Get MIME type from file extension
+             */
+            getMimeType(filePath) {
+                const extension = filePath.split('.').pop().toLowerCase().split('?')[0]; // Remove query params
+                const mimeTypes = {
+                    'mp4': 'video/mp4',
+                    'm4v': 'video/mp4',
+                    'mov': 'video/quicktime',
+                    'avi': 'video/x-msvideo',
+                    'webm': 'video/webm',
+                    'ogv': 'video/ogg',
+                    'mkv': 'video/x-matroska',
+                    '3gp': 'video/3gpp',
+                    'flv': 'video/x-flv'
+                };
+                return mimeTypes[extension] || null;
+            }
+
+            /**
+             * Get human-readable error name from media error code
+             */
+            getMediaErrorName(code) {
+                const errors = {
+                    1: 'MEDIA_ERR_ABORTED',
+                    2: 'MEDIA_ERR_NETWORK',
+                    3: 'MEDIA_ERR_DECODE',
+                    4: 'MEDIA_ERR_SRC_NOT_SUPPORTED'
+                };
+                return errors[code] || 'UNKNOWN_ERROR';
+            }
             
             playLoopVideo() {
                 console.log('Playing loop video...');
@@ -581,36 +713,36 @@
                     }
 
                     console.log('Final video path:', videoPath);
-                    this.video.src = videoPath;
-                    this.video.loop = true;
-                    // Enable CORS for cross-origin requests
+
+                    // CRITICAL: Set CORS before setting src
                     this.video.crossOrigin = 'anonymous';
 
-                    // Add a small delay to ensure the video element is ready
-                    setTimeout(() => {
-                        this.video.play().catch(e => {
-                            console.error('Video load error:', e);
-                            console.error('Error name:', e.name);
-                            console.error('Error message:', e.message);
+                    // Load the video with proper error handling
+                    this.loadVideoSource(videoPath, true).catch(e => {
+                        console.error('Video load error:', e);
+                        console.error('Error name:', e.name);
+                        console.error('Error message:', e.message);
 
-                            // Provide more helpful error messages
-                            if (videoPath.startsWith('https://') || videoPath.startsWith('http://')) {
-                                if (e.name === 'NotAllowedError') {
-                                    this.showStatus('Video blocked by browser. SharePoint may require authentication.');
-                                } else if (e.name === 'NotSupportedError') {
-                                    this.showStatus('Video format not supported or CORS blocked.');
-                                } else {
-                                    this.showStatus('Cannot access SharePoint video. Check URL and permissions.');
-                                }
-                                console.log('For SharePoint videos:');
-                                console.log('1. Use a direct video URL (right-click video > Copy link)');
-                                console.log('2. Or use SharePoint embed URL');
-                                console.log('3. Make sure the video has public/anonymous access enabled');
+                        // Provide more helpful error messages
+                        if (videoPath.startsWith('https://') || videoPath.startsWith('http://')) {
+                            if (e.name === 'NotAllowedError') {
+                                this.showStatus('Video blocked by browser. SharePoint may require authentication.');
+                            } else if (e.name === 'NotSupportedError') {
+                                this.showStatus('Video format not supported or CORS blocked. Try converting to MP4.');
+                            } else if (e.message && e.message.includes('CORS')) {
+                                this.showStatus('CORS blocked. Video needs anonymous access or proper CORS headers.');
                             } else {
-                                this.showStatus(`File access blocked. Check console for path.`);
+                                this.showStatus('Cannot access SharePoint video. Check URL and permissions.');
                             }
-                        });
-                    }, 100);
+                            console.log('For SharePoint videos:');
+                            console.log('1. Use a direct video URL (right-click video > Copy link)');
+                            console.log('2. Or use SharePoint embed URL');
+                            console.log('3. Make sure the video has public/anonymous access enabled');
+                            console.log('4. Ensure CORS is enabled for the SharePoint site');
+                        } else {
+                            this.showStatus(`File access blocked. Check console for path.`);
+                        }
+                    });
 
                     this.showStatus('Loading video...');
                 } else {
@@ -623,23 +755,28 @@
             
             playNumberedVideo(number, extension = '.mp4') {
                 console.log(`Playing numbered video ${number}${extension}...`);
-                
+
                 // Hide image if showing
                 this.hideImage();
-                
+
                 // Use file path
                 if (this.settings.videoDirectory) {
                     console.log(`Using file path for video ${number}`);
                     const videoPath = this.buildFilePath(number, extension);
-                    
+
                     console.log(`Video ${number} path:`, videoPath);
-                    this.video.src = videoPath;
-                    this.video.loop = false;
-                    this.video.play().catch(e => {
+
+                    // Set CORS before loading
+                    this.video.crossOrigin = 'anonymous';
+
+                    // Use the improved loading method
+                    this.loadVideoSource(videoPath, false).catch(e => {
                         console.error('Video load error:', e);
-                        this.showStatus(`Could not load video ${number}${extension}`);
-                        this.playLoopVideo();
+                        this.showStatus(`Could not load video ${number}${extension} - ${e.name}`);
+                        // Return to loop video after error
+                        setTimeout(() => this.playLoopVideo(), 2000);
                     });
+
                     this.showStatus(`Playing video ${number}${extension}`);
                 } else {
                     this.showStatus('Video directory not configured');
@@ -649,12 +786,12 @@
             
             playNumberedImage(number, extension = '.jpg') {
                 console.log(`Displaying image ${number}${extension}...`);
-                
+
                 // Use file path
                 if (this.settings.videoDirectory) {
                     console.log(`Using file path for image ${number}`);
                     const imagePath = this.buildFilePath(number, extension);
-                    
+
                     console.log(`Image ${number} path:`, imagePath);
                     this.showImage(imagePath);
                     this.showStatus(`Displaying image ${number}${extension} (press L to return to loop)`);
@@ -663,12 +800,30 @@
                     console.log('No video directory configured');
                 }
             }
-            
+
             showImage(src) {
                 // Pause video
                 this.video.pause();
                 this.video.style.display = 'none';
-                
+
+                // Enable CORS for images too
+                this.image.crossOrigin = 'anonymous';
+
+                // Handle image load errors
+                this.image.onerror = () => {
+                    console.error('Image load error:', src);
+                    this.showStatus('Could not load image');
+                    // Return to loop video
+                    setTimeout(() => {
+                        this.hideImage();
+                        this.playLoopVideo();
+                    }, 2000);
+                };
+
+                this.image.onload = () => {
+                    console.log('Image loaded successfully');
+                };
+
                 // Show image
                 this.image.src = src;
                 this.image.style.display = 'block';
