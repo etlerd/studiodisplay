@@ -274,7 +274,8 @@
                 <strong>Numbered files (01, 02, 03, etc.):</strong> Upload files to your hosting location (e.g., same GitHub Release as your loop video).<br>
                 <strong>Regular keys 1-8:</strong> Play videos/images (formats: .mp4, .mov, .jpg, .png, .gif, .avi, .webm)<br>
                 <strong>Numpad keys 1-8:</strong> Play sounds over current media (formats: .mp3, .wav, .m4a)<br>
-                <strong>Sound file naming:</strong> Name files as 01.m4a, 02.mp3, etc. (optionally: 01-sound.m4a, 01-audio.wav)
+                <strong>Sound file naming (GitHub Releases):</strong> Use any descriptive name starting with the number (e.g., 01-sad-trombone.m4a, 02-applause.mp3)<br>
+                <strong>Sound file naming (other hosting):</strong> Use simple patterns: 01.m4a, 01-sound.m4a, 01-audio.wav, etc.
             </small>
         </div>
         
@@ -317,13 +318,17 @@
                 this.defaultTimerSeconds = 1200; // 20 minutes limit
                 this.flashInterval = null; // For flashing
                 this.audioContext = null; // For sound generation
-                
+
                 this.settings = {
                     mediaDirectory: '',
                     loopVideoName: '',
                     timerDuration: '20:00',
                     autoStartTimer: false
                 };
+
+                // Cache for GitHub Release file listings
+                this.githubFilesCache = null;
+                this.githubReleaseInfo = null;
                 
                 console.log('About to initialize...');
                 this.init();
@@ -507,17 +512,116 @@
                 });
             }
             
-            tryLoadNumberedSound(number) {
+            /**
+             * Parse GitHub Release URL to extract owner, repo, and tag
+             * Example: https://github.com/user/repo/releases/download/TAG/ -> {owner: 'user', repo: 'repo', tag: 'TAG'}
+             */
+            parseGitHubReleaseUrl(url) {
+                const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/releases\/download\/([^\/]+)/);
+                if (match) {
+                    return {
+                        owner: match[1],
+                        repo: match[2],
+                        tag: match[3]
+                    };
+                }
+                return null;
+            }
+
+            /**
+             * Fetch and cache GitHub Release assets
+             */
+            async fetchGitHubReleaseFiles() {
+                const releaseInfo = this.parseGitHubReleaseUrl(this.settings.mediaDirectory);
+
+                if (!releaseInfo) {
+                    return null; // Not a GitHub Release URL
+                }
+
+                // Check if we already have cached data for this release
+                if (this.githubFilesCache &&
+                    this.githubReleaseInfo &&
+                    this.githubReleaseInfo.owner === releaseInfo.owner &&
+                    this.githubReleaseInfo.repo === releaseInfo.repo &&
+                    this.githubReleaseInfo.tag === releaseInfo.tag) {
+                    console.log('Using cached GitHub release files');
+                    return this.githubFilesCache;
+                }
+
+                console.log('Fetching GitHub release files:', releaseInfo);
+
+                try {
+                    const apiUrl = `https://api.github.com/repos/${releaseInfo.owner}/${releaseInfo.repo}/releases/tags/${releaseInfo.tag}`;
+                    const response = await fetch(apiUrl);
+
+                    if (!response.ok) {
+                        console.error('GitHub API error:', response.status, response.statusText);
+                        return null;
+                    }
+
+                    const releaseData = await response.json();
+
+                    // Cache the file list
+                    this.githubFilesCache = releaseData.assets.map(asset => ({
+                        name: asset.name,
+                        url: asset.browser_download_url
+                    }));
+                    this.githubReleaseInfo = releaseInfo;
+
+                    console.log('GitHub release files cached:', this.githubFilesCache.length, 'files');
+                    return this.githubFilesCache;
+                } catch (error) {
+                    console.error('Error fetching GitHub release:', error);
+                    return null;
+                }
+            }
+
+            /**
+             * Find a file matching the pattern (e.g., "01*.m4a")
+             */
+            async findFileByPattern(number, extensions) {
+                // Try GitHub API for flexible naming
+                const files = await this.fetchGitHubReleaseFiles();
+
+                if (files) {
+                    // Search for files matching the pattern
+                    for (const ext of extensions) {
+                        const pattern = new RegExp(`^${number}.*\\${ext}$`, 'i');
+                        const match = files.find(file => pattern.test(file.name));
+
+                        if (match) {
+                            console.log(`Found file via GitHub API: ${match.name}`);
+                            return {
+                                name: match.name,
+                                url: match.url
+                            };
+                        }
+                    }
+                }
+
+                return null;
+            }
+
+            async tryLoadNumberedSound(number) {
                 if (!this.settings.mediaDirectory) {
                     this.showStatus('Media directory not configured');
                     return;
                 }
 
-                // Only try audio extensions for numpad keys
                 const audioExtensions = ['.mp3', '.wav', '.m4a'];
 
-                // Common naming patterns to try (in order of preference)
-                // Supports files like: 01.m4a, 01-sound.m4a, 01-sad-trombone.m4a, 01_audio.m4a, etc.
+                console.log(`Trying to find sound file ${number}...`);
+
+                // Try using GitHub API for flexible file discovery
+                const foundFile = await this.findFileByPattern(number, audioExtensions);
+
+                if (foundFile) {
+                    console.log(`Playing sound from GitHub API: ${foundFile.name}`);
+                    this.playNumberedSoundFromUrl(foundFile.url, foundFile.name);
+                    return;
+                }
+
+                // Fallback: try common naming patterns (for non-GitHub hosting)
                 const namingPatterns = [
                     '',           // Try exact: 01.m4a
                     '-sound',     // Try: 01-sound.m4a
@@ -526,8 +630,6 @@
                     '_sound',     // Try: 01_sound.m4a
                     '_audio',     // Try: 01_audio.m4a
                 ];
-
-                console.log(`Trying to find sound file ${number}...`);
 
                 // Try each extension with each naming pattern
                 for (const ext of audioExtensions) {
@@ -941,6 +1043,41 @@
                     this.showStatus(`Image ${number} not found`);
                     console.log('No media directory configured');
                 }
+            }
+
+            playNumberedSoundFromUrl(url, displayName) {
+                console.log(`Playing sound from URL: ${displayName}`);
+                console.log(`URL: ${url}`);
+
+                // Create new Audio element for this sound
+                // This allows multiple sounds to play simultaneously
+                const audio = new Audio(url);
+
+                // Handle load errors
+                audio.onerror = (e) => {
+                    console.error('Sound load error:', e);
+                    this.showStatus(`Could not load sound ${displayName}`);
+                };
+
+                // Play the sound once loaded
+                audio.oncanplay = () => {
+                    console.log('Sound can play');
+                    audio.play()
+                        .then(() => {
+                            console.log('Sound playing successfully');
+                            this.showStatus(`Playing sound ${displayName}`);
+                        })
+                        .catch(e => {
+                            console.error('Play failed:', e);
+                            this.showStatus(`Could not play sound ${displayName}`);
+                        });
+                };
+
+                // Clean up after sound finishes playing
+                audio.onended = () => {
+                    console.log('Sound finished playing');
+                    audio.src = '';
+                };
             }
 
             playNumberedSound(number, extension = '.mp3') {
