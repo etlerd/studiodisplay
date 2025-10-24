@@ -247,11 +247,13 @@
         <h2>Settings</h2>
         
         <div class="setting-group">
-            <label for="videoDirectory">Video Directory Path:</label>
-            <input type="text" id="videoDirectory" placeholder="file:///C:/Users/username/Videos">
+            <label for="videoDirectory">Video Directory Path or URL:</label>
+            <input type="text" id="videoDirectory" placeholder="file:///C:/Users/username/Videos or https://example.com/videos">
             <small>
-                Use file:// format. Replace spaces with %20<br>
-                Example: file:///C:/Users/name/OneDrive%20-%20Company/Videos
+                Use file:// for local files or http/https for web URLs. Replace spaces with %20<br>
+                Examples:<br>
+                - file:///C:/Users/name/OneDrive%20-%20Company/Videos<br>
+                - https://example.com/media/videos
             </small>
         </div>
         
@@ -525,9 +527,14 @@
             
             buildFilePath(number, extension) {
                 let filePath;
-                if (this.settings.videoDirectory.startsWith('file://')) {
+                // Check if directory is already a URL (http://, https://, or file://)
+                if (this.settings.videoDirectory.startsWith('http://') ||
+                    this.settings.videoDirectory.startsWith('https://') ||
+                    this.settings.videoDirectory.startsWith('file://')) {
+                    // Already a URL, just append the filename
                     filePath = `${this.settings.videoDirectory}/${number}${extension}`;
                 } else {
+                    // Assume it's a local path, prepend file:///
                     filePath = `file:///${this.settings.videoDirectory}/${number}${extension}`.replace(/\\/g, '/');
                 }
                 return filePath;
@@ -539,19 +546,24 @@
                 // Hide image if showing
                 this.hideImage();
                 
-                // Try file path (no more upload support)
+                // Try URL or file path (no more upload support)
                 if (this.settings.videoDirectory && this.settings.loopVideoName) {
-                    console.log('Trying file path for loop video');
+                    console.log('Trying URL/path for loop video');
                     console.log('Directory:', this.settings.videoDirectory);
                     console.log('Filename:', this.settings.loopVideoName);
-                    
+
                     let videoPath;
-                    if (this.settings.videoDirectory.startsWith('file://')) {
+                    // Check if directory is already a URL (http://, https://, or file://)
+                    if (this.settings.videoDirectory.startsWith('http://') ||
+                        this.settings.videoDirectory.startsWith('https://') ||
+                        this.settings.videoDirectory.startsWith('file://')) {
+                        // Already a URL, just append the filename
                         videoPath = `${this.settings.videoDirectory}/${this.settings.loopVideoName}`;
                     } else {
+                        // Assume it's a local path, prepend file:///
                         videoPath = `file:///${this.settings.videoDirectory}/${this.settings.loopVideoName}`.replace(/\\/g, '/');
                     }
-                    
+
                     console.log('Final video path:', videoPath);
                     this.video.src = videoPath;
                     this.video.loop = true;
