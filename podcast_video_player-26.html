@@ -95,7 +95,10 @@
             border-radius: 10px;
             border: 2px solid #333;
             z-index: 30;
-            min-width: 500px;
+            min-width: 600px;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
             display: none;
         }
 
@@ -103,6 +106,141 @@
             color: white;
             margin-bottom: 20px;
             text-align: center;
+        }
+
+        .help-toggle {
+            background: transparent;
+            border: none;
+            color: #4CAF50;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 5px 10px;
+            margin-bottom: 15px;
+            text-decoration: underline;
+        }
+
+        .help-toggle:hover {
+            color: #45a049;
+        }
+
+        .help-content {
+            display: none;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 3px solid #4CAF50;
+        }
+
+        .help-content.expanded {
+            display: block;
+        }
+
+        .assets-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 5px;
+        }
+
+        .assets-section h3 {
+            color: white;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+
+        .assets-carousel {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .carousel-nav {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 5px;
+            flex-shrink: 0;
+            transition: background 0.3s;
+        }
+
+        .carousel-nav:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .carousel-nav:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .assets-container {
+            display: flex;
+            gap: 10px;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .asset-thumb {
+            flex-shrink: 0;
+            width: 120px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .asset-thumb:hover {
+            transform: scale(1.05);
+        }
+
+        .asset-thumb-image {
+            width: 120px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 5px;
+            background: #222;
+            border: 2px solid #444;
+        }
+
+        .asset-thumb-placeholder {
+            width: 120px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #222;
+            border-radius: 5px;
+            border: 2px solid #444;
+            font-size: 32px;
+        }
+
+        .asset-thumb-label {
+            color: #aaa;
+            font-size: 11px;
+            margin-top: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .asset-type-video {
+            border-color: #ff6b6b;
+        }
+
+        .asset-type-image {
+            border-color: #4CAF50;
+        }
+
+        .asset-type-sound {
+            border-color: #ffd93d;
+        }
+
+        .assets-loading {
+            color: #aaa;
+            text-align: center;
+            padding: 20px;
         }
 
         .setting-group {
@@ -245,56 +383,60 @@
 
     <div id="settingsPanel">
         <h2>Settings</h2>
-        
+
+        <button class="help-toggle" onclick="toggleHelp()">📖 Show/Hide Help</button>
+
+        <div class="help-content" id="helpContent">
+            <small style="color: #ccc; line-height: 1.5;">
+                <strong>Media Directory:</strong> GitHub Releases base path (ends with /)<br>
+                Example: https://github.com/user/repo/releases/download/studio-display/<br>
+                <strong>⚠️ SharePoint/OneDrive NOT supported</strong> (CORS blocked)<br><br>
+
+                <strong>Loop Video Filename:</strong> Enter just the filename (appended to base path above)<br>
+                Example: background.mp4<br><br>
+
+                <strong>Numbered files (01, 02, 03, etc.):</strong><br>
+                • <strong>Regular keys 1-8:</strong> Play videos/images<br>
+                • <strong>Numpad keys 1-8:</strong> Play sounds (overlay on current media)<br><br>
+
+                <strong>File naming (GitHub Releases):</strong> Use descriptive names starting with the number:<br>
+                • Videos: 01-intro.mp4, 02-sermon-clip.mov<br>
+                • Images: 03-announcement.png, 04-worship-lyrics.jpg<br>
+                • Sounds: 05-applause.mp3, 06-ding.m4a<br><br>
+
+                <strong>File naming (other hosting):</strong> Use exact numbered filenames: 01.mp4, 02.png, 03.mp3, etc.
+            </small>
+        </div>
+
+        <!-- Available Assets Section -->
+        <div class="assets-section" id="assetsSection" style="display: none;">
+            <h3>📁 Available Assets in Release</h3>
+            <div id="assetsDisplay" class="assets-loading">Loading assets...</div>
+        </div>
+
         <div class="setting-group">
             <label for="mediaDirectory">Media Directory Base Path:</label>
             <input type="text" id="mediaDirectory" placeholder="https://github.com/user/repo/releases/download/TAG/">
-            <small>
-                <strong>Recommended:</strong> GitHub Releases base path (ends with /)<br>
-                Example: https://github.com/user/repo/releases/download/studio-display/<br>
-                <strong>Local files:</strong> Use file:// format (file:///C:/Users/name/Videos/)<br>
-                <strong>⚠️ SharePoint/OneDrive NOT supported</strong> (CORS blocked)<br>
-                See HOSTING_GUIDE.md for setup instructions
-            </small>
         </div>
 
         <div class="setting-group">
             <label for="loopVideoName">Loop Video Filename:</label>
             <input type="text" id="loopVideoName" placeholder="background.mp4">
-            <small>
-                <strong>Enter just the filename</strong> (will be appended to base path above)<br>
-                Example: background.mp4 or Motion%20Graphic.mp4<br>
-                This approach allows numbered files (01, 02, 03, etc.) to work when you press 1-8<br>
-                <strong>Advanced:</strong> Leave empty and put full URL in directory field (numbered files won't work)
-            </small>
         </div>
-        
-        <div class="setting-group">
-            <small style="color: #aaa; line-height: 1.5;">
-                <strong>Numbered files (01, 02, 03, etc.):</strong> Upload files to your hosting location (e.g., same GitHub Release as your loop video).<br>
-                <strong>Regular keys 1-8:</strong> Play videos/images (formats: .mp4, .mov, .jpg, .png, .gif, .avi, .webm)<br>
-                <strong>Numpad keys 1-8:</strong> Play sounds over current media (formats: .mp3, .wav, .m4a)<br>
-                <strong>File naming (GitHub Releases):</strong> Use any descriptive name starting with the number:<br>
-                • Videos: 01-intro.mp4, 02-sermon-clip.mov<br>
-                • Images: 03-announcement.png, 04-worship-lyrics.jpg<br>
-                • Sounds: 05-applause.mp3, 06-ding.m4a<br>
-                <strong>File naming (other hosting):</strong> Use exact numbered filenames: 01.mp4, 02.png, 03.mp3, etc.
-            </small>
-        </div>
-        
+
         <div class="setting-group">
             <label for="timerDuration">Timer Limit (MM:SS):</label>
             <input type="text" id="timerDuration" placeholder="20:00" pattern="[0-9]{1,2}:[0-9]{2}">
             <small>Timer counts up from 00:00 to this limit, then resets and continues</small>
         </div>
-        
+
         <div class="setting-group">
             <label style="display: flex; align-items: center;">
                 <input type="checkbox" id="autoStartTimer" style="margin-right: 10px; width: auto;">
                 <span>Auto-start timer when loop video begins</span>
             </label>
         </div>
-        
+
         <div class="button-group">
             <button class="btn btn-primary" onclick="saveSettings()">Save</button>
             <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
@@ -1404,10 +1546,100 @@
             
             openSettings() {
                 this.settingsPanel.style.display = 'block';
+                this.displayAvailableAssets();
             }
-            
+
             closeSettings() {
                 this.settingsPanel.style.display = 'none';
+            }
+
+            async displayAvailableAssets() {
+                const assetsSection = document.getElementById('assetsSection');
+                const assetsDisplay = document.getElementById('assetsDisplay');
+
+                // Only show assets if we have a GitHub Release URL
+                const releaseInfo = this.parseGitHubReleaseUrl(this.settings.mediaDirectory);
+                if (!releaseInfo) {
+                    assetsSection.style.display = 'none';
+                    return;
+                }
+
+                assetsSection.style.display = 'block';
+                assetsDisplay.innerHTML = '<div class="assets-loading">Loading assets...</div>';
+
+                try {
+                    const files = await this.fetchGitHubReleaseFiles();
+                    if (!files || files.length === 0) {
+                        assetsDisplay.innerHTML = '<div style="color: #aaa; text-align: center;">No assets found in release</div>';
+                        return;
+                    }
+
+                    // Group files by type
+                    const videos = files.filter(f => /\.(mp4|mov|avi|webm)$/i.test(f.name));
+                    const images = files.filter(f => /\.(png|jpg|jpeg|gif)$/i.test(f.name));
+                    const sounds = files.filter(f => /\.(mp3|wav|m4a)$/i.test(f.name));
+
+                    let html = '';
+
+                    // Display videos
+                    if (videos.length > 0) {
+                        html += this.createAssetCarousel('Videos', videos, 'video');
+                    }
+
+                    // Display images
+                    if (images.length > 0) {
+                        html += this.createAssetCarousel('Images', images, 'image');
+                    }
+
+                    // Display sounds
+                    if (sounds.length > 0) {
+                        html += this.createAssetCarousel('Sounds', sounds, 'sound');
+                    }
+
+                    assetsDisplay.innerHTML = html || '<div style="color: #aaa; text-align: center;">No media assets found</div>';
+
+                } catch (error) {
+                    console.error('Error loading assets:', error);
+                    assetsDisplay.innerHTML = '<div style="color: #ff6b6b; text-align: center;">Error loading assets</div>';
+                }
+            }
+
+            createAssetCarousel(title, files, type) {
+                const iconMap = {
+                    'video': '🎬',
+                    'image': '🖼️',
+                    'sound': '🔊'
+                };
+
+                let html = `<div style="margin-bottom: 15px;">
+                    <div style="color: white; font-weight: bold; margin-bottom: 8px;">${iconMap[type]} ${title} (${files.length})</div>
+                    <div class="assets-carousel">
+                        <button class="carousel-nav" onclick="scrollCarousel('${type}', -1)">◀</button>
+                        <div class="assets-container" id="${type}Container">`;
+
+                files.forEach(file => {
+                    const isImage = type === 'image';
+                    const thumbClass = `asset-type-${type}`;
+
+                    html += `<div class="asset-thumb">`;
+
+                    if (isImage) {
+                        html += `<img src="${file.url}" class="asset-thumb-image ${thumbClass}" alt="${file.name}" onerror="this.src=''; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="asset-thumb-placeholder ${thumbClass}" style="display: none;">${iconMap[type]}</div>`;
+                    } else {
+                        html += `<div class="asset-thumb-placeholder ${thumbClass}">${iconMap[type]}</div>`;
+                    }
+
+                    html += `<div class="asset-thumb-label" title="${file.name}">${file.name}</div>
+                            </div>`;
+                });
+
+                html += `    </div>
+                        <button class="carousel-nav" onclick="scrollCarousel('${type}', 1)">▶</button>
+                    </div>
+                </div>`;
+
+                return html;
             }
             
             showStatus(message) {
@@ -1423,9 +1655,25 @@
         function saveSettings() {
             player.saveSettings();
         }
-        
+
         function closeSettings() {
             player.closeSettings();
+        }
+
+        function toggleHelp() {
+            const helpContent = document.getElementById('helpContent');
+            helpContent.classList.toggle('expanded');
+        }
+
+        function scrollCarousel(type, direction) {
+            const container = document.getElementById(`${type}Container`);
+            if (!container) return;
+
+            const scrollAmount = 140; // thumbnail width (120px) + gap (10px) + some extra
+            container.scrollBy({
+                left: direction * scrollAmount,
+                behavior: 'smooth'
+            });
         }
         
         // Initialize when page loads
