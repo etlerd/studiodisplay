@@ -65,6 +65,20 @@
             color: #ff4444;
         }
 
+        #slideCounter {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+            font-size: 3vw;
+            color: white;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            user-select: none;
+            display: none;
+        }
+
         #settingsIcon {
             position: absolute;
             bottom: 20px;
@@ -227,19 +241,21 @@
     <div id="videoContainer">
         <video id="mainVideo"></video>
         <img id="mainImage" alt="Display Image">
-        
+
         <div id="timerOverlay">20:00</div>
-        
+        <div id="slideCounter">Slide 1/10</div>
+
         <button id="settingsIcon">
             <i class="fas fa-cog"></i>
         </button>
-        
+
         <div id="helpText">
             F1: Settings | SPACE: Timer Start/Stop | R: Timer Reset<br>
             L: Loop Video | 1-8: Play Videos/Images 01-08<br>
+            P: Slideshow | ←/→: Previous/Next Slide | HOME/END: First/Last Slide<br>
             F11: Fullscreen | ESC: Exit Fullscreen
         </div>
-        
+
         <div id="status"></div>
     </div>
 
@@ -285,7 +301,41 @@
                 <span>Auto-start timer when loop video begins</span>
             </label>
         </div>
-        
+
+        <div class="setting-group" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #333;">
+            <h3 style="color: white; margin-bottom: 15px; font-size: 16px;">Slideshow Settings</h3>
+
+            <label for="slideFormat">Slide Image Format:</label>
+            <select id="slideFormat" style="width: 100%; padding: 10px; border: 1px solid #555; border-radius: 5px; background: #222; color: white; font-size: 14px; margin-bottom: 10px;">
+                <option value=".png">PNG (Recommended)</option>
+                <option value=".jpg">JPG/JPEG</option>
+                <option value=".jpeg">JPEG</option>
+                <option value=".gif">GIF</option>
+            </select>
+            <small>
+                Format of your exported PowerPoint slides<br>
+                Export from PowerPoint: File > Export > PNG or JPEG
+            </small>
+        </div>
+
+        <div class="setting-group">
+            <label for="maxSlides">Number of Slides (leave blank for auto-detect):</label>
+            <input type="number" id="maxSlides" placeholder="Auto-detect" min="1" max="999">
+            <small>
+                Number of slides in your presentation (01.png, 02.png, etc.)<br>
+                Leave blank to automatically detect available slides
+            </small>
+        </div>
+
+        <div class="setting-group">
+            <label for="slideAdvanceTime">Auto-advance Slides (seconds, 0 = manual only):</label>
+            <input type="number" id="slideAdvanceTime" placeholder="0" min="0" max="300" value="0">
+            <small>
+                Automatically advance to next slide after this many seconds<br>
+                Set to 0 for manual control with arrow keys only
+            </small>
+        </div>
+
         <div class="button-group">
             <button class="btn btn-primary" onclick="saveSettings()">Save</button>
             <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
@@ -303,23 +353,33 @@
                 this.video = document.getElementById('mainVideo');
                 this.image = document.getElementById('mainImage');
                 this.timerOverlay = document.getElementById('timerOverlay');
+                this.slideCounter = document.getElementById('slideCounter');
                 this.settingsPanel = document.getElementById('settingsPanel');
                 this.status = document.getElementById('status');
-                
+
                 this.timerSeconds = 1200; // 20 minutes default
                 this.timerInterval = null;
                 this.isTimerRunning = false;
                 this.defaultTimerSeconds = 1200;
                 this.flashInterval = null; // For flashing at 0
                 this.audioContext = null; // For sound generation
-                
+
+                // Slideshow properties
+                this.currentSlide = 1;
+                this.totalSlides = 0;
+                this.isInSlideshow = false;
+                this.slideAdvanceInterval = null;
+
                 this.settings = {
                     videoDirectory: '',
                     loopVideoName: '',
                     timerDuration: '20:00',
-                    autoStartTimer: false
+                    autoStartTimer: false,
+                    slideFormat: '.png',
+                    maxSlides: null,
+                    slideAdvanceTime: 0
                 };
-                
+
                 console.log('About to initialize...');
                 this.init();
             }
@@ -368,25 +428,40 @@
                 document.getElementById('videoDirectory').value = this.settings.videoDirectory || '';
                 document.getElementById('loopVideoName').value = this.settings.loopVideoName || '';
                 document.getElementById('timerDuration').value = this.settings.timerDuration || '20:00';
-                
+                document.getElementById('slideFormat').value = this.settings.slideFormat || '.png';
+                document.getElementById('maxSlides').value = this.settings.maxSlides || '';
+                document.getElementById('slideAdvanceTime').value = this.settings.slideAdvanceTime || 0;
+
                 console.log('Settings loaded - Directory:', `"${this.settings.videoDirectory}"`);
                 console.log('Settings loaded - Loop video:', `"${this.settings.loopVideoName}"`);
                 console.log('Settings loaded - Timer:', `"${this.settings.timerDuration}"`);
+                console.log('Settings loaded - Slide format:', `"${this.settings.slideFormat}"`);
+                console.log('Settings loaded - Max slides:', this.settings.maxSlides);
+                console.log('Settings loaded - Slide advance time:', this.settings.slideAdvanceTime);
             }
             
             saveSettings() {
                 const dirValue = document.getElementById('videoDirectory').value;
                 const loopValue = document.getElementById('loopVideoName').value;
                 const timerValue = document.getElementById('timerDuration').value;
-                
+                const slideFormatValue = document.getElementById('slideFormat').value;
+                const maxSlidesValue = document.getElementById('maxSlides').value;
+                const slideAdvanceTimeValue = document.getElementById('slideAdvanceTime').value;
+
                 console.log('=== SAVING SETTINGS ===');
                 console.log('Directory field value:', `"${dirValue}"`);
                 console.log('Loop video field value:', `"${loopValue}"`);
                 console.log('Timer field value:', `"${timerValue}"`);
-                
+                console.log('Slide format value:', `"${slideFormatValue}"`);
+                console.log('Max slides value:', `"${maxSlidesValue}"`);
+                console.log('Slide advance time value:', `"${slideAdvanceTimeValue}"`);
+
                 this.settings.videoDirectory = dirValue;
                 this.settings.loopVideoName = loopValue;
                 this.settings.timerDuration = timerValue;
+                this.settings.slideFormat = slideFormatValue;
+                this.settings.maxSlides = maxSlidesValue ? parseInt(maxSlidesValue) : null;
+                this.settings.slideAdvanceTime = slideAdvanceTimeValue ? parseInt(slideAdvanceTimeValue) : 0;
                 
                 console.log('Settings object before save:', JSON.stringify(this.settings, null, 2));
                 
@@ -439,9 +514,45 @@
                         }
                         return; // Exit early, don't process other shortcuts
                     }
-                    
+
                     console.log(`Key pressed: "${e.key}"`);
-                    
+
+                    // Handle Escape - exit slideshow if active
+                    if (e.key === 'Escape') {
+                        if (this.isInSlideshow) {
+                            e.preventDefault();
+                            console.log('Escape - exiting slideshow');
+                            this.exitSlideshow();
+                        }
+                        return;
+                    }
+
+                    // Slideshow navigation (arrow keys work in slideshow mode)
+                    if (this.isInSlideshow) {
+                        if (e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            console.log('Arrow Right - next slide');
+                            this.nextSlide();
+                            return;
+                        } else if (e.key === 'ArrowLeft') {
+                            e.preventDefault();
+                            console.log('Arrow Left - previous slide');
+                            this.previousSlide();
+                            return;
+                        } else if (e.key === 'Home') {
+                            e.preventDefault();
+                            console.log('Home - first slide');
+                            this.goToSlide(1);
+                            return;
+                        } else if (e.key === 'End') {
+                            e.preventDefault();
+                            console.log('End - last slide');
+                            this.goToSlide(this.totalSlides);
+                            return;
+                        }
+                    }
+
+                    // General shortcuts (work outside of slideshow)
                     if (e.key === 'F1') {
                         e.preventDefault();
                         console.log('F1 - opening settings');
@@ -456,8 +567,16 @@
                         this.resetTimer();
                     } else if (e.key === 'l' || e.key === 'L') {
                         e.preventDefault();
-                        console.log('L - playing loop video');
-                        this.playLoopVideo();
+                        console.log('L - playing loop video or exit slideshow');
+                        if (this.isInSlideshow) {
+                            this.exitSlideshow();
+                        } else {
+                            this.playLoopVideo();
+                        }
+                    } else if (e.key === 'p' || e.key === 'P') {
+                        e.preventDefault();
+                        console.log('P - starting slideshow');
+                        this.startSlideshow();
                     } else if (e.key >= '1' && e.key <= '8') {
                         e.preventDefault();
                         const num = e.key.padStart(2, '0');
@@ -834,12 +953,212 @@
                 // Hide image
                 this.image.style.display = 'none';
                 this.image.src = '';
-                
+
                 // Show video
                 this.video.style.display = 'block';
                 console.log('Image hidden');
             }
-            
+
+            // ========== SLIDESHOW METHODS ==========
+
+            async startSlideshow() {
+                console.log('Starting slideshow...');
+
+                if (!this.settings.videoDirectory) {
+                    this.showStatus('Video directory not configured. Configure in settings (F1).');
+                    return;
+                }
+
+                // Detect total slides if not manually set
+                if (!this.settings.maxSlides) {
+                    this.showStatus('Detecting slides...');
+                    await this.detectTotalSlides();
+                    if (this.totalSlides === 0) {
+                        this.showStatus('No slides found. Export PowerPoint to ' + this.settings.slideFormat);
+                        return;
+                    }
+                }
+
+                this.isInSlideshow = true;
+                this.currentSlide = 1;
+                this.totalSlides = this.settings.maxSlides || this.totalSlides;
+
+                // Show slide counter
+                this.slideCounter.style.display = 'block';
+                this.updateSlideCounter();
+
+                // Load first slide
+                this.goToSlide(1);
+
+                // Start auto-advance if configured
+                if (this.settings.slideAdvanceTime > 0) {
+                    this.startSlideAdvanceTimer();
+                }
+
+                this.showStatus(`Slideshow started (${this.totalSlides} slides)`);
+            }
+
+            exitSlideshow() {
+                console.log('Exiting slideshow...');
+                this.isInSlideshow = false;
+                this.stopSlideAdvanceTimer();
+
+                // Hide slide counter
+                this.slideCounter.style.display = 'none';
+
+                // Return to loop video
+                this.hideImage();
+                this.playLoopVideo();
+
+                this.showStatus('Slideshow ended');
+            }
+
+            goToSlide(slideNumber) {
+                if (slideNumber < 1 || (this.totalSlides > 0 && slideNumber > this.totalSlides)) {
+                    console.log(`Slide ${slideNumber} out of range (1-${this.totalSlides})`);
+                    return;
+                }
+
+                this.currentSlide = slideNumber;
+                console.log(`Going to slide ${slideNumber}...`);
+
+                // Build slide path
+                const paddedNumber = slideNumber.toString().padStart(2, '0');
+                const slidePath = this.buildFilePath(paddedNumber, this.settings.slideFormat);
+
+                console.log(`Slide ${slideNumber} path:`, slidePath);
+
+                // Show the slide
+                this.showSlideImage(slidePath);
+                this.updateSlideCounter();
+
+                // Restart auto-advance timer if active
+                if (this.settings.slideAdvanceTime > 0 && this.isInSlideshow) {
+                    this.startSlideAdvanceTimer();
+                }
+            }
+
+            nextSlide() {
+                if (!this.isInSlideshow) return;
+
+                if (this.currentSlide < this.totalSlides) {
+                    this.goToSlide(this.currentSlide + 1);
+                } else {
+                    // At last slide - loop back to first or stop
+                    console.log('At last slide');
+                    this.showStatus('Last slide reached. Press ← or ESC to exit.');
+                }
+            }
+
+            previousSlide() {
+                if (!this.isInSlideshow) return;
+
+                if (this.currentSlide > 1) {
+                    this.goToSlide(this.currentSlide - 1);
+                } else {
+                    console.log('Already at first slide');
+                    this.showStatus('First slide');
+                }
+            }
+
+            updateSlideCounter() {
+                this.slideCounter.textContent = `Slide ${this.currentSlide}/${this.totalSlides}`;
+            }
+
+            async detectTotalSlides() {
+                console.log('Auto-detecting number of slides...');
+
+                if (!this.settings.videoDirectory) {
+                    console.log('No video directory configured');
+                    return;
+                }
+
+                // Try to detect slides by attempting to load them
+                // Start from 01 and keep going until we can't find any more
+                let foundSlides = 0;
+                const maxToCheck = 999; // Don't check more than 999 slides
+
+                for (let i = 1; i <= maxToCheck; i++) {
+                    const paddedNumber = i.toString().padStart(2, '0');
+                    const slidePath = this.buildFilePath(paddedNumber, this.settings.slideFormat);
+
+                    // Try to load the image
+                    const exists = await this.checkImageExists(slidePath);
+                    if (exists) {
+                        foundSlides = i;
+                        console.log(`Found slide ${paddedNumber}`);
+                    } else {
+                        // If we didn't find this one, assume no more slides
+                        break;
+                    }
+                }
+
+                this.totalSlides = foundSlides;
+                console.log(`Detected ${foundSlides} slides`);
+                return foundSlides;
+            }
+
+            checkImageExists(imagePath) {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => resolve(true);
+                    img.onerror = () => resolve(false);
+                    img.src = imagePath;
+
+                    // Timeout after 2 seconds
+                    setTimeout(() => resolve(false), 2000);
+                });
+            }
+
+            showSlideImage(src) {
+                // Pause video
+                this.video.pause();
+                this.video.style.display = 'none';
+
+                // Enable CORS for images
+                this.image.crossOrigin = 'anonymous';
+
+                // Handle image load errors
+                this.image.onerror = () => {
+                    console.error('Slide load error:', src);
+                    this.showStatus(`Could not load slide ${this.currentSlide}`);
+
+                    // If in slideshow mode, try to continue
+                    if (this.isInSlideshow && this.currentSlide < this.totalSlides) {
+                        setTimeout(() => this.nextSlide(), 1000);
+                    }
+                };
+
+                this.image.onload = () => {
+                    console.log(`Slide ${this.currentSlide} loaded successfully`);
+                };
+
+                // Show image
+                this.image.src = src;
+                this.image.style.display = 'block';
+            }
+
+            startSlideAdvanceTimer() {
+                this.stopSlideAdvanceTimer(); // Clear any existing timer
+
+                if (this.settings.slideAdvanceTime > 0) {
+                    console.log(`Starting auto-advance timer: ${this.settings.slideAdvanceTime} seconds`);
+                    this.slideAdvanceInterval = setInterval(() => {
+                        this.nextSlide();
+                    }, this.settings.slideAdvanceTime * 1000);
+                }
+            }
+
+            stopSlideAdvanceTimer() {
+                if (this.slideAdvanceInterval) {
+                    clearInterval(this.slideAdvanceInterval);
+                    this.slideAdvanceInterval = null;
+                    console.log('Auto-advance timer stopped');
+                }
+            }
+
+            // ========== END SLIDESHOW METHODS ==========
+
             toggleTimer() {
                 if (this.isTimerRunning) {
                     this.stopTimer();
