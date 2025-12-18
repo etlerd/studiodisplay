@@ -237,7 +237,7 @@
         <div id="helpText">
             F1: Settings | SPACE: Timer Start/Pause | R: Timer Reset<br>
             L: Loop Video | 1-8: Play Videos/Images | Numpad 1-8: Play Sounds<br>
-            F11: Fullscreen | ESC: Exit Fullscreen
+            ←/→: Navigate Images | F11: Fullscreen | ESC: Exit Fullscreen
         </div>
         
         <div id="status"></div>
@@ -321,6 +321,11 @@
                 this.defaultTimerSeconds = 1200; // 20 minutes limit
                 this.flashInterval = null; // For flashing
                 this.audioContext = null; // For sound generation
+
+                // Track current image state for arrow key navigation
+                this.currentImageNumber = null; // e.g., "01", "02", etc.
+                this.currentImageExtension = null; // e.g., ".png", ".jpg"
+                this.isViewingImage = false;
 
                 this.settings = {
                     mediaDirectory: '',
@@ -468,6 +473,21 @@
                     }
 
                     console.log(`Key pressed: key="${e.key}" code="${e.code}"`);
+
+                    // Arrow key navigation for images (only when viewing an image)
+                    if (this.isViewingImage) {
+                        if (e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            console.log('Arrow Right - next image');
+                            this.nextImage();
+                            return;
+                        } else if (e.key === 'ArrowLeft') {
+                            e.preventDefault();
+                            console.log('Arrow Left - previous image');
+                            this.previousImage();
+                            return;
+                        }
+                    }
 
                     if (e.key === 'F1') {
                         e.preventDefault();
@@ -707,7 +727,9 @@
                     const foundImage = await this.findFileByPattern(number, imageExtensions);
                     if (foundImage) {
                         console.log(`✓ Found image via GitHub API: ${foundImage.name}`);
-                        this.playNumberedImageFromUrl(foundImage.url, foundImage.name);
+                        // Extract extension from filename
+                        const ext = '.' + foundImage.name.split('.').pop();
+                        this.playNumberedImageFromUrl(foundImage.url, foundImage.name, number, ext);
                         return;
                     }
 
@@ -942,6 +964,11 @@
             playLoopVideo() {
                 console.log('Playing loop video...');
 
+                // Reset image viewing state
+                this.isViewingImage = false;
+                this.currentImageNumber = null;
+                this.currentImageExtension = null;
+
                 // Hide image if showing
                 this.hideImage();
 
@@ -1050,6 +1077,11 @@
             playNumberedVideo(number, extension = '.mp4') {
                 console.log(`Playing numbered video ${number}${extension}...`);
 
+                // Reset image viewing state
+                this.isViewingImage = false;
+                this.currentImageNumber = null;
+                this.currentImageExtension = null;
+
                 // Hide image if showing
                 this.hideImage();
 
@@ -1081,6 +1113,11 @@
                 console.log(`Playing video from URL: ${displayName}`);
                 console.log(`URL: ${url}`);
 
+                // Reset image viewing state
+                this.isViewingImage = false;
+                this.currentImageNumber = null;
+                this.currentImageExtension = null;
+
                 // Hide image if showing
                 this.hideImage();
 
@@ -1095,12 +1132,20 @@
                 this.showStatus(`Playing video ${displayName}`);
             }
 
-            playNumberedImageFromUrl(url, displayName) {
+            playNumberedImageFromUrl(url, displayName, number, extension) {
                 console.log(`Displaying image from URL: ${displayName}`);
                 console.log(`URL: ${url}`);
 
                 this.showImage(url);
-                this.showStatus(`Displaying image ${displayName} (press L to return to loop)`);
+
+                // Track current image for arrow key navigation
+                if (number && extension) {
+                    this.currentImageNumber = number;
+                    this.currentImageExtension = extension;
+                    this.isViewingImage = true;
+                }
+
+                this.showStatus(`Displaying image ${displayName} (←/→ to navigate, L to return to loop)`);
             }
 
             playNumberedImage(number, extension = '.jpg') {
@@ -1113,7 +1158,13 @@
 
                     console.log(`Image ${number} path:`, imagePath);
                     this.showImage(imagePath);
-                    this.showStatus(`Displaying image ${number}${extension} (press L to return to loop)`);
+
+                    // Track current image for arrow key navigation
+                    this.currentImageNumber = number;
+                    this.currentImageExtension = extension;
+                    this.isViewingImage = true;
+
+                    this.showStatus(`Displaying image ${number}${extension} (←/→ to navigate, L to return to loop)`);
                 } else {
                     this.showStatus(`Image ${number} not found`);
                     console.log('No media directory configured');
@@ -1241,7 +1292,48 @@
                 this.video.style.display = 'block';
                 console.log('Image hidden');
             }
-            
+
+            // Arrow key navigation for images
+            nextImage() {
+                if (!this.isViewingImage || !this.currentImageNumber) {
+                    console.log('Not viewing an image, ignoring next image request');
+                    return;
+                }
+
+                // Parse current number and increment
+                const currentNum = parseInt(this.currentImageNumber);
+                const nextNum = currentNum + 1;
+                const nextNumStr = nextNum.toString().padStart(2, '0');
+
+                console.log(`Navigating from image ${this.currentImageNumber} to ${nextNumStr}`);
+
+                // Try to load the next image
+                this.tryLoadNumberedFile(nextNumStr);
+            }
+
+            previousImage() {
+                if (!this.isViewingImage || !this.currentImageNumber) {
+                    console.log('Not viewing an image, ignoring previous image request');
+                    return;
+                }
+
+                // Parse current number and decrement
+                const currentNum = parseInt(this.currentImageNumber);
+                if (currentNum <= 1) {
+                    console.log('Already at first image (01)');
+                    this.showStatus('Already at first image');
+                    return;
+                }
+
+                const prevNum = currentNum - 1;
+                const prevNumStr = prevNum.toString().padStart(2, '0');
+
+                console.log(`Navigating from image ${this.currentImageNumber} to ${prevNumStr}`);
+
+                // Try to load the previous image
+                this.tryLoadNumberedFile(prevNumStr);
+            }
+
             toggleTimer() {
                 if (this.isTimerRunning) {
                     this.stopTimer();
