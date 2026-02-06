@@ -235,7 +235,7 @@
         </button>
         
         <div id="helpText">
-            F1: Settings | SPACE: Timer Start/Pause | R: Timer Reset<br>
+            F1: Settings | SPACE: Timer Start/Pause | ': Timer Reset<br>
             ;: Loop Video | 1-9,0: Images (01-10) | a-z: Videos (01-26) | Numpad 1-8: Sounds<br>
             ←/→: Navigate Images | F11: Fullscreen | ESC: Exit Fullscreen
         </div>
@@ -499,9 +499,9 @@
                         e.preventDefault();
                         console.log('Spacebar - toggling timer');
                         this.toggleTimer();
-                    } else if (e.key === 'r' || e.key === 'R') {
+                    } else if (e.key === "'") {
                         e.preventDefault();
-                        console.log('R - resetting timer');
+                        console.log("' - resetting timer");
                         this.resetTimer();
                     } else if (e.key === ';') {
                         e.preventDefault();
