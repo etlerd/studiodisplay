@@ -236,7 +236,7 @@
         
         <div id="helpText">
             F1: Settings | SPACE: Timer Start/Pause | R: Timer Reset<br>
-            L: Loop Video | ` 1-9 0 - =: Play Videos/Images (01-13) | Numpad 1-8: Play Sounds<br>
+            ;: Loop Video | a-z: Play Videos/Images (01-26) | Numpad 1-8: Play Sounds<br>
             ←/→: Navigate Images | F11: Fullscreen | ESC: Exit Fullscreen
         </div>
         
@@ -264,15 +264,16 @@
             <small>
                 <strong>Enter just the filename</strong> (will be appended to base path above)<br>
                 Example: background.mp4 or Motion%20Graphic.mp4<br>
-                This approach allows numbered files (01-13) to work when you press top row keys<br>
+                This approach allows numbered files (01-26) to work when you press letter keys (a-z)<br>
                 <strong>Advanced:</strong> Leave empty and put full URL in directory field (numbered files won't work)
             </small>
         </div>
         
         <div class="setting-group">
             <small style="color: #aaa; line-height: 1.5;">
-                <strong>Numbered files (01, 02, 03, etc.):</strong> Upload files to your hosting location (e.g., same GitHub Release as your loop video).<br>
-                <strong>Top row keys (` 1 2 3 4 5 6 7 8 9 0 - =):</strong> Play videos/images 01-13 (formats: .mp4, .mov, .jpg, .png, .gif, .avi, .webm)<br>
+                <strong>Numbered files (01-26):</strong> Upload files to your hosting location (e.g., same GitHub Release as your loop video).<br>
+                <strong>Letter keys (a-z):</strong> Play videos/images 01-26 (formats: .mp4, .mov, .jpg, .png, .gif, .avi, .webm)<br>
+                <strong>Semicolon (;):</strong> Return to loop video<br>
                 <strong>Numpad keys 1-8:</strong> Play sounds over current media (formats: .mp3, .wav, .m4a)<br>
                 <strong>File naming (GitHub Releases):</strong> Use any descriptive name starting with the number:<br>
                 • Videos: 01-intro.mp4, 02-sermon-clip.mov<br>
@@ -501,9 +502,9 @@
                         e.preventDefault();
                         console.log('R - resetting timer');
                         this.resetTimer();
-                    } else if (e.key === 'l' || e.key === 'L') {
+                    } else if (e.key === ';') {
                         e.preventDefault();
-                        console.log('L - playing loop video');
+                        console.log('; - playing loop video');
                         this.playLoopVideo();
                     } else if (e.code >= 'Numpad1' && e.code <= 'Numpad8') {
                         // Handle numpad keys (Numpad1-Numpad8) for sound playback
@@ -516,42 +517,12 @@
                             console.error('Error loading sound:', err);
                             this.showStatus(`Error loading sound ${num}: ${err.message}`);
                         });
-                    } else if (e.key >= '1' && e.key <= '9') {
+                    } else if (e.key >= 'a' && e.key <= 'z') {
                         e.preventDefault();
-                        const num = e.key.padStart(2, '0');
-                        console.log(`Number ${e.key} pressed - trying to load file ${num}`);
-                        this.tryLoadNumberedFile(num).catch(err => {
-                            console.error('Error loading file:', err);
-                            this.showStatus(`Error loading file ${num}: ${err.message}`);
-                        });
-                    } else if (e.key === '0') {
-                        e.preventDefault();
-                        const num = '10';
-                        console.log(`Number 0 pressed - trying to load file ${num}`);
-                        this.tryLoadNumberedFile(num).catch(err => {
-                            console.error('Error loading file:', err);
-                            this.showStatus(`Error loading file ${num}: ${err.message}`);
-                        });
-                    } else if (e.key === '-') {
-                        e.preventDefault();
-                        const num = '11';
-                        console.log(`Minus key pressed - trying to load file ${num}`);
-                        this.tryLoadNumberedFile(num).catch(err => {
-                            console.error('Error loading file:', err);
-                            this.showStatus(`Error loading file ${num}: ${err.message}`);
-                        });
-                    } else if (e.key === '=') {
-                        e.preventDefault();
-                        const num = '12';
-                        console.log(`Equals key pressed - trying to load file ${num}`);
-                        this.tryLoadNumberedFile(num).catch(err => {
-                            console.error('Error loading file:', err);
-                            this.showStatus(`Error loading file ${num}: ${err.message}`);
-                        });
-                    } else if (e.key === '`') {
-                        e.preventDefault();
-                        const num = '13';
-                        console.log(`Backtick key pressed - trying to load file ${num}`);
+                        // Map a-z to 01-26
+                        const letterIndex = e.key.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+                        const num = letterIndex.toString().padStart(2, '0');
+                        console.log(`Letter ${e.key} pressed - trying to load file ${num}`);
                         this.tryLoadNumberedFile(num).catch(err => {
                             console.error('Error loading file:', err);
                             this.showStatus(`Error loading file ${num}: ${err.message}`);
