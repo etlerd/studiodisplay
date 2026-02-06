@@ -236,7 +236,7 @@
         
         <div id="helpText">
             F1: Settings | SPACE: Timer Start/Pause | R: Timer Reset<br>
-            ;: Loop Video | a-z: Play Videos/Images (01-26) | Numpad 1-8: Play Sounds<br>
+            ;: Loop Video | 1-9,0: Images (01-10) | a-z: Videos (01-26) | Numpad 1-8: Sounds<br>
             ←/→: Navigate Images | F11: Fullscreen | ESC: Exit Fullscreen
         </div>
         
@@ -264,15 +264,16 @@
             <small>
                 <strong>Enter just the filename</strong> (will be appended to base path above)<br>
                 Example: background.mp4 or Motion%20Graphic.mp4<br>
-                This approach allows numbered files (01-26) to work when you press letter keys (a-z)<br>
+                This approach allows numbered videos (01-26) and images (01-10) to work<br>
                 <strong>Advanced:</strong> Leave empty and put full URL in directory field (numbered files won't work)
             </small>
         </div>
         
         <div class="setting-group">
             <small style="color: #aaa; line-height: 1.5;">
-                <strong>Numbered files (01-26):</strong> Upload files to your hosting location (e.g., same GitHub Release as your loop video).<br>
-                <strong>Letter keys (a-z):</strong> Play videos/images 01-26 (formats: .mp4, .mov, .jpg, .png, .gif, .avi, .webm)<br>
+                <strong>Numbered files:</strong> Upload files to your hosting location (e.g., same GitHub Release as your loop video).<br>
+                <strong>Number keys (1-9,0):</strong> Display images 01-10 (formats: .png, .jpg, .jpeg, .gif, .webp)<br>
+                <strong>Letter keys (a-z):</strong> Play videos 01-26 (formats: .mp4, .mov, .avi, .webm)<br>
                 <strong>Semicolon (;):</strong> Return to loop video<br>
                 <strong>Numpad keys 1-8:</strong> Play sounds over current media (formats: .mp3, .wav, .m4a)<br>
                 <strong>File naming (GitHub Releases):</strong> Use any descriptive name starting with the number:<br>
@@ -517,15 +518,34 @@
                             console.error('Error loading sound:', err);
                             this.showStatus(`Error loading sound ${num}: ${err.message}`);
                         });
+                    } else if (e.code >= 'Digit1' && e.code <= 'Digit9') {
+                        // Handle top row number keys (1-9) for image playback
+                        e.preventDefault();
+                        const digit = e.code.charAt(5); // Extract digit from "DigitX"
+                        const num = digit.padStart(2, '0');
+                        console.log(`Number ${digit} pressed - trying to load image ${num}`);
+                        this.tryLoadNumberedImage(num).catch(err => {
+                            console.error('Error loading image:', err);
+                            this.showStatus(`Error loading image ${num}: ${err.message}`);
+                        });
+                    } else if (e.code === 'Digit0') {
+                        // Handle top row 0 key for image 10
+                        e.preventDefault();
+                        const num = '10';
+                        console.log(`Number 0 pressed - trying to load image ${num}`);
+                        this.tryLoadNumberedImage(num).catch(err => {
+                            console.error('Error loading image:', err);
+                            this.showStatus(`Error loading image ${num}: ${err.message}`);
+                        });
                     } else if (e.key >= 'a' && e.key <= 'z') {
                         e.preventDefault();
-                        // Map a-z to 01-26
+                        // Map a-z to 01-26 (videos only)
                         const letterIndex = e.key.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
                         const num = letterIndex.toString().padStart(2, '0');
-                        console.log(`Letter ${e.key} pressed - trying to load file ${num}`);
-                        this.tryLoadNumberedFile(num).catch(err => {
-                            console.error('Error loading file:', err);
-                            this.showStatus(`Error loading file ${num}: ${err.message}`);
+                        console.log(`Letter ${e.key} pressed - trying to load video ${num}`);
+                        this.tryLoadNumberedVideo(num).catch(err => {
+                            console.error('Error loading video:', err);
+                            this.showStatus(`Error loading video ${num}: ${err.message}`);
                         });
                     }
                 };
@@ -789,7 +809,109 @@
 
                 console.log('=== Finished trying all video/image patterns ===');
             }
-            
+
+            async tryLoadNumberedImage(number) {
+                if (!this.settings.mediaDirectory) {
+                    this.showStatus('Media directory not configured');
+                    return;
+                }
+
+                const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
+
+                console.log(`=== Trying to find image file ${number}... ===`);
+                console.log('Media directory:', this.settings.mediaDirectory);
+
+                try {
+                    // Try using GitHub API for flexible file discovery
+                    console.log('Attempting GitHub API file discovery for images...');
+
+                    const foundImage = await this.findFileByPattern(number, imageExtensions);
+                    if (foundImage) {
+                        console.log(`✓ Found image via GitHub API: ${foundImage.name}`);
+                        // Extract extension from filename
+                        const ext = '.' + foundImage.name.split('.').pop();
+                        this.playNumberedImageFromUrl(foundImage.url, foundImage.name, number, ext);
+                        return;
+                    }
+
+                    console.log('No image found via GitHub API, trying fallback patterns...');
+                } catch (error) {
+                    console.error('GitHub API discovery failed:', error);
+                    console.log('Falling back to pattern matching...');
+                }
+
+                // Fallback: try exact filenames (for non-GitHub hosting)
+                console.log('Using fallback pattern matching...');
+
+                for (const ext of imageExtensions) {
+                    const imagePath = this.buildFilePath(number, ext);
+                    console.log(`Trying image: ${imagePath}`);
+
+                    // Create a temporary image to test if it loads
+                    const testImg = new Image();
+                    testImg.onload = () => {
+                        console.log(`Found image: ${number}${ext}`);
+                        this.playNumberedImage(number, ext);
+                    };
+                    testImg.onerror = () => {
+                        console.log(`Image not found: ${number}${ext}`);
+                    };
+                    testImg.src = imagePath;
+                }
+
+                console.log('=== Finished trying all image patterns ===');
+            }
+
+            async tryLoadNumberedVideo(number) {
+                if (!this.settings.mediaDirectory) {
+                    this.showStatus('Media directory not configured');
+                    return;
+                }
+
+                const videoExtensions = ['.mp4', '.mov', '.avi', '.webm'];
+
+                console.log(`=== Trying to find video file ${number}... ===`);
+                console.log('Media directory:', this.settings.mediaDirectory);
+
+                try {
+                    // Try using GitHub API for flexible file discovery
+                    console.log('Attempting GitHub API file discovery for videos...');
+
+                    const foundVideo = await this.findFileByPattern(number, videoExtensions);
+                    if (foundVideo) {
+                        console.log(`✓ Found video via GitHub API: ${foundVideo.name}`);
+                        this.playNumberedVideoFromUrl(foundVideo.url, foundVideo.name);
+                        return;
+                    }
+
+                    console.log('No video found via GitHub API, trying fallback patterns...');
+                } catch (error) {
+                    console.error('GitHub API discovery failed:', error);
+                    console.log('Falling back to pattern matching...');
+                }
+
+                // Fallback: try exact filenames (for non-GitHub hosting)
+                console.log('Using fallback pattern matching...');
+
+                for (const ext of videoExtensions) {
+                    const videoPath = this.buildFilePath(number, ext);
+                    console.log(`Trying video: ${videoPath}`);
+
+                    // Create a temporary video to test if it loads
+                    const testVideo = document.createElement('video');
+                    testVideo.onloadedmetadata = () => {
+                        console.log(`Found video: ${number}${ext}`);
+                        this.playNumberedVideo(number, ext);
+                    };
+                    testVideo.onerror = () => {
+                        console.log(`Video not found: ${number}${ext}`);
+                    };
+                    testVideo.src = videoPath;
+                }
+
+                console.log('=== Finished trying all video patterns ===');
+            }
+
             buildFilePath(number, extension) {
                 let filePath;
                 // Handle HTTPS/HTTP URLs (like SharePoint)
