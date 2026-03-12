@@ -288,29 +288,41 @@
                 <strong>Numbered files:</strong> Upload files to your hosting location (e.g., same GitHub Release as your loop video).<br>
                 <strong>Number keys (1-9,0):</strong> Display images 01-10 (formats: .png, .jpg, .jpeg, .gif, .webp)<br>
                 <strong>Letter keys (a-z):</strong> Play videos 01-26 (formats: .mp4, .mov, .avi, .webm)<br>
-                <strong>Shift+letter (A-Z):</strong> Display HTML pages 01-26 (formats: .html, .htm)<br>
+                <strong>Shift+letter (A-Z):</strong> Display HTML pages 01-26 from HTML Pages Base URL<br>
                 <strong>Semicolon (;):</strong> Return to loop video<br>
                 <strong>Numpad keys 1-8:</strong> Play sounds over current media (formats: .mp3, .wav, .m4a)<br>
                 <strong>File naming (GitHub Releases):</strong> Use any descriptive name starting with the number:<br>
                 • Videos: 01-intro.mp4, 02-sermon-clip.mov<br>
                 • Images: 03-announcement.png, 04-worship-lyrics.jpg<br>
                 • Sounds: 05-applause.mp3, 06-ding.m4a<br>
-                • HTML pages: 01-rundown.html, 02-graphics.html<br>
-                <strong>File naming (other hosting):</strong> Use exact numbered filenames: 01.mp4, 02.png, 03.mp3, 01.html, etc.
+                <strong>HTML pages:</strong> Commit to repo html/ folder, name exactly 01.html, 02.html, etc.<br>
+                <strong>⚠️ HTML files in GitHub Releases will download, not display.</strong>
             </small>
         </div>
         
         <div class="setting-group">
-            <label>HTML Pages (F2–F6):</label>
+            <label for="htmlPagesBaseUrl">HTML Pages Base URL (Shift+A–Z, numbered 01–26):</label>
+            <input type="text" id="htmlPagesBaseUrl" placeholder="./html/">
+            <small>
+                <strong>⚠️ GitHub Releases do NOT work for HTML files</strong> — browsers download them instead of displaying them.<br>
+                <strong>Recommended:</strong> Commit HTML files to your repo's <code>html/</code> folder. They'll be served by GitHub Pages at the same origin.<br>
+                • Name files exactly: <code>01.html</code>, <code>02.html</code>, … <code>26.html</code><br>
+                • Press <strong>Shift+A</strong> → <code>01.html</code>, <strong>Shift+B</strong> → <code>02.html</code>, etc.<br>
+                • Leave as <code>./html/</code> if your files are in the <code>html/</code> subfolder of this repo.<br>
+                • Any CORS-friendly base URL works (e.g. Cloudflare R2 with public access).
+            </small>
+        </div>
+
+        <div class="setting-group">
+            <label>Quick HTML Pages (F2–F6):</label>
             <input type="text" id="htmlPage1" placeholder="F2: https://example.com/page1.html" style="margin-bottom:5px;">
             <input type="text" id="htmlPage2" placeholder="F3: https://example.com/page2.html" style="margin-bottom:5px;">
             <input type="text" id="htmlPage3" placeholder="F4: https://example.com/page3.html" style="margin-bottom:5px;">
             <input type="text" id="htmlPage4" placeholder="F5: https://example.com/page4.html" style="margin-bottom:5px;">
             <input type="text" id="htmlPage5" placeholder="F6: https://example.com/page5.html">
             <small>
-                Enter up to 5 HTML page URLs. Press F2–F6 to display them fullscreen.<br>
-                Press ; (semicolon) to return to the loop video.<br>
-                <strong>Note:</strong> Some sites block embedding via iframes (X-Frame-Options). Use pages you control or local files (file:///path/to/page.html).
+                Up to 5 one-off HTML page URLs. Press F2–F6 to display them.<br>
+                Same restriction applies: avoid GitHub Release URLs.
             </small>
         </div>
 
@@ -354,7 +366,6 @@
                 this.defaultTimerSeconds = 1200; // 20 minutes limit
                 this.flashInterval = null; // For flashing
                 this.audioContext = null; // For sound generation
-                this.htmlBlobUrl = null; // For HTML page blob URLs
 
                 // Track current image state for arrow key navigation
                 this.currentImageNumber = null; // e.g., "01", "02", etc.
@@ -366,7 +377,8 @@
                     loopVideoName: '',
                     timerDuration: '20:00',
                     autoStartTimer: false,
-                    htmlPages: ['', '', '', '', '']
+                    htmlPages: ['', '', '', '', ''],
+                    htmlPagesBaseUrl: './html/'
                 };
 
                 // Cache for GitHub Release file listings
@@ -442,6 +454,8 @@
                     const field = document.getElementById(`htmlPage${i + 1}`);
                     if (field) field.value = htmlPages[i] || '';
                 }
+                const htmlBaseField = document.getElementById('htmlPagesBaseUrl');
+                if (htmlBaseField) htmlBaseField.value = this.settings.htmlPagesBaseUrl || './html/';
 
                 console.log('Settings loaded - Directory:', `"${this.settings.mediaDirectory}"`);
                 console.log('Settings loaded - Loop video:', `"${this.settings.loopVideoName}"`);
@@ -462,12 +476,14 @@
                 this.settings.loopVideoName = loopValue;
                 this.settings.timerDuration = timerValue;
 
-                // Save HTML page URLs
+                // Save HTML page URLs and base path
                 this.settings.htmlPages = [];
                 for (let i = 0; i < 5; i++) {
                     const field = document.getElementById(`htmlPage${i + 1}`);
                     this.settings.htmlPages.push(field ? field.value.trim() : '');
                 }
+                const htmlBaseField = document.getElementById('htmlPagesBaseUrl');
+                if (htmlBaseField) this.settings.htmlPagesBaseUrl = htmlBaseField.value.trim() || './html/';
                 
                 console.log('Settings object before save:', JSON.stringify(this.settings, null, 2));
                 
@@ -931,54 +947,42 @@
             }
 
             async tryLoadNumberedHtml(number) {
-                if (!this.settings.mediaDirectory) {
-                    this.showStatus('Media directory not configured');
-                    return;
-                }
+                // HTML files cannot be hosted in GitHub Releases because GitHub sends
+                // Content-Disposition: attachment for all release assets, which causes
+                // browsers to download rather than display them. HTML files must be
+                // committed to the repository and served via GitHub Pages (same origin).
+                //
+                // Configure "HTML Pages Base URL" in Settings (default: ./html/).
+                // Name your files 01.html, 02.html, etc. and commit them to that folder.
 
-                const htmlExtensions = ['.html', '.htm'];
+                const base = (this.settings.htmlPagesBaseUrl || './html/').replace(/\/$/, '');
+                const extensions = ['.html', '.htm'];
 
-                console.log(`=== Trying to find HTML file ${number}... ===`);
-                console.log('Media directory:', this.settings.mediaDirectory);
+                console.log(`=== Trying to find HTML file ${number} in ${base} ===`);
 
-                try {
-                    // Try using GitHub API for flexible file discovery
-                    console.log('Attempting GitHub API file discovery for HTML...');
+                for (const ext of extensions) {
+                    const url = `${base}/${number}${ext}`;
+                    console.log(`Probing: ${url}`);
 
-                    const foundFile = await this.findFileByPattern(number, htmlExtensions);
-                    if (foundFile) {
-                        console.log(`✓ Found HTML file via GitHub API: ${foundFile.name}`);
-                        this.showHtmlPage(foundFile.url, `${number} (${foundFile.name})`);
+                    try {
+                        const response = await fetch(url, { method: 'HEAD' });
+                        if (response.ok) {
+                            console.log(`✓ Found HTML file: ${url}`);
+                            this.showHtmlPage(url, number);
+                            return;
+                        }
+                    } catch (e) {
+                        // HEAD failed (CORS on external base URL or network error).
+                        // Try loading directly in the iframe anyway — works if the server
+                        // allows iframe embedding and serves HTML inline.
+                        console.log(`HEAD failed for ${url}, loading directly in iframe`);
+                        this.showHtmlPage(url, number);
                         return;
                     }
-
-                    console.log('No HTML file found via GitHub API, trying fallback patterns...');
-                } catch (error) {
-                    console.error('GitHub API discovery failed:', error);
-                    console.log('Falling back to pattern matching...');
                 }
 
-                // Fallback: try exact filenames (for non-GitHub hosting)
-                console.log('Using fallback pattern matching...');
-
-                for (const ext of htmlExtensions) {
-                    const htmlPath = this.buildFilePath(number, ext);
-                    console.log(`Trying HTML: ${htmlPath}`);
-
-                    // Probe via fetch (HEAD request) since we can't use img/video elements for HTML
-                    fetch(htmlPath, { method: 'HEAD' })
-                        .then(response => {
-                            if (response.ok) {
-                                console.log(`Found HTML: ${number}${ext}`);
-                                this.showHtmlPage(htmlPath, number);
-                            }
-                        })
-                        .catch(() => {
-                            console.log(`HTML not found: ${number}${ext}`);
-                        });
-                }
-
-                console.log('=== Finished trying all HTML patterns ===');
+                this.showStatus(`HTML page ${number} not found at ${base}/. Check Settings → HTML Pages Base URL.`);
+                console.log('=== No HTML file found ===');
             }
 
             async tryLoadNumberedVideo(number) {
@@ -1497,7 +1501,7 @@
                 }
             }
 
-            async showHtmlPage(url, slotNumber) {
+            showHtmlPage(url, slotNumber) {
                 // Hide image if showing
                 this.hideImage();
 
@@ -1510,53 +1514,21 @@
                 this.currentImageNumber = null;
                 this.currentImageExtension = null;
 
-                this.showStatus(`Loading HTML page ${slotNumber}...`);
-                console.log(`Loading HTML page ${slotNumber}: ${url}`);
+                // Load directly in the iframe. Works for same-origin content (files committed
+                // to the repo and served via GitHub Pages) and any server that does not send
+                // Content-Disposition: attachment. GitHub Releases always send that header, so
+                // HTML files must NOT be hosted there — use the repo's html/ folder instead.
+                this.htmlFrame.src = url;
+                this.htmlFrame.style.display = 'block';
 
-                try {
-                    // Fetch the raw HTML content.
-                    // GitHub Release assets are served with Content-Disposition: attachment,
-                    // which causes browsers to download rather than display in an iframe.
-                    // Fetching and creating a blob URL bypasses that header.
-                    const response = await fetch(url);
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    const html = await response.text();
-
-                    // Inject a <base> tag so relative URLs (images, scripts, CSS) resolve
-                    // correctly against the original file's location.
-                    const baseTag = `<base href="${url}">`;
-                    const modifiedHtml = html.replace(/(<head[^>]*>)/i, `$1${baseTag}`);
-                    const finalHtml = modifiedHtml !== html ? modifiedHtml : `${baseTag}${html}`;
-
-                    // Revoke any previous blob URL to avoid memory leaks
-                    if (this.htmlBlobUrl) {
-                        URL.revokeObjectURL(this.htmlBlobUrl);
-                    }
-                    const blob = new Blob([finalHtml], { type: 'text/html' });
-                    this.htmlBlobUrl = URL.createObjectURL(blob);
-
-                    this.htmlFrame.src = this.htmlBlobUrl;
-                    this.htmlFrame.style.display = 'block';
-
-                    this.showStatus(`Showing HTML page ${slotNumber} (press ; to return to loop video)`);
-                    console.log(`HTML page ${slotNumber} displayed via blob URL`);
-                } catch (error) {
-                    console.error('Error loading HTML page:', error);
-                    this.showStatus(`Could not load HTML page ${slotNumber}: ${error.message}`);
-                    this.video.style.display = 'block';
-                }
+                this.showStatus(`Showing HTML page ${slotNumber} (press ; to return to loop video)`);
+                console.log(`HTML page ${slotNumber} displayed: ${url}`);
             }
 
             hideHtmlPage() {
                 if (this.htmlFrame.style.display !== 'none') {
                     this.htmlFrame.style.display = 'none';
                     this.htmlFrame.src = '';
-                    if (this.htmlBlobUrl) {
-                        URL.revokeObjectURL(this.htmlBlobUrl);
-                        this.htmlBlobUrl = null;
-                    }
                     this.video.style.display = 'block';
                     console.log('HTML frame hidden');
                 }
