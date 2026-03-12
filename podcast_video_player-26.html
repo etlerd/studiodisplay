@@ -47,6 +47,18 @@
             display: none;
         }
 
+        #htmlFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            z-index: 5;
+            background: #000;
+        }
+
         #timerOverlay {
             position: absolute;
             right: 20px;
@@ -227,6 +239,7 @@
     <div id="videoContainer">
         <video id="mainVideo"></video>
         <img id="mainImage" alt="Display Image">
+        <iframe id="htmlFrame" allowfullscreen allow="autoplay; fullscreen"></iframe>
         
         <div id="timerOverlay">00:00</div>
         
@@ -237,7 +250,8 @@
         <div id="helpText">
             F1: Settings | SPACE: Timer Start/Pause | ': Timer Reset<br>
             ;: Loop Video | 1-9,0: Images (01-10) | a-z: Videos (01-26) | Numpad 1-8: Sounds<br>
-            ←/→: Navigate Images | F11: Fullscreen | ESC: Exit Fullscreen
+            F2–F6: HTML Pages (configure in Settings) | ←/→: Navigate Images<br>
+            F11: Fullscreen | ESC: Exit Fullscreen
         </div>
         
         <div id="status"></div>
@@ -285,6 +299,20 @@
         </div>
         
         <div class="setting-group">
+            <label>HTML Pages (F2–F6):</label>
+            <input type="text" id="htmlPage1" placeholder="F2: https://example.com/page1.html" style="margin-bottom:5px;">
+            <input type="text" id="htmlPage2" placeholder="F3: https://example.com/page2.html" style="margin-bottom:5px;">
+            <input type="text" id="htmlPage3" placeholder="F4: https://example.com/page3.html" style="margin-bottom:5px;">
+            <input type="text" id="htmlPage4" placeholder="F5: https://example.com/page4.html" style="margin-bottom:5px;">
+            <input type="text" id="htmlPage5" placeholder="F6: https://example.com/page5.html">
+            <small>
+                Enter up to 5 HTML page URLs. Press F2–F6 to display them fullscreen.<br>
+                Press ; (semicolon) to return to the loop video.<br>
+                <strong>Note:</strong> Some sites block embedding via iframes (X-Frame-Options). Use pages you control or local files (file:///path/to/page.html).
+            </small>
+        </div>
+
+        <div class="setting-group">
             <label for="timerDuration">Timer Limit (MM:SS):</label>
             <input type="text" id="timerDuration" placeholder="20:00" pattern="[0-9]{1,2}:[0-9]{2}">
             <small>Timer counts up from 00:00 to this limit, then resets and continues</small>
@@ -313,6 +341,7 @@
                 console.log('Creating PodcastPlayer...');
                 this.video = document.getElementById('mainVideo');
                 this.image = document.getElementById('mainImage');
+                this.htmlFrame = document.getElementById('htmlFrame');
                 this.timerOverlay = document.getElementById('timerOverlay');
                 this.settingsPanel = document.getElementById('settingsPanel');
                 this.status = document.getElementById('status');
@@ -333,7 +362,8 @@
                     mediaDirectory: '',
                     loopVideoName: '',
                     timerDuration: '20:00',
-                    autoStartTimer: false
+                    autoStartTimer: false,
+                    htmlPages: ['', '', '', '', '']
                 };
 
                 // Cache for GitHub Release file listings
@@ -403,6 +433,13 @@
                 document.getElementById('loopVideoName').value = this.settings.loopVideoName || '';
                 document.getElementById('timerDuration').value = this.settings.timerDuration || '20:00';
 
+                // Populate HTML page URL fields
+                const htmlPages = this.settings.htmlPages || ['', '', '', '', ''];
+                for (let i = 0; i < 5; i++) {
+                    const field = document.getElementById(`htmlPage${i + 1}`);
+                    if (field) field.value = htmlPages[i] || '';
+                }
+
                 console.log('Settings loaded - Directory:', `"${this.settings.mediaDirectory}"`);
                 console.log('Settings loaded - Loop video:', `"${this.settings.loopVideoName}"`);
                 console.log('Settings loaded - Timer:', `"${this.settings.timerDuration}"`);
@@ -421,6 +458,13 @@
                 this.settings.mediaDirectory = dirValue;
                 this.settings.loopVideoName = loopValue;
                 this.settings.timerDuration = timerValue;
+
+                // Save HTML page URLs
+                this.settings.htmlPages = [];
+                for (let i = 0; i < 5; i++) {
+                    const field = document.getElementById(`htmlPage${i + 1}`);
+                    this.settings.htmlPages.push(field ? field.value.trim() : '');
+                }
                 
                 console.log('Settings object before save:', JSON.stringify(this.settings, null, 2));
                 
@@ -495,6 +539,16 @@
                         e.preventDefault();
                         console.log('F1 - opening settings');
                         this.toggleSettings();
+                    } else if (e.key >= 'F2' && e.key <= 'F6') {
+                        e.preventDefault();
+                        const pageIndex = parseInt(e.key.slice(1)) - 2; // F2=0, F3=1, ...
+                        const url = (this.settings.htmlPages || [])[pageIndex] || '';
+                        if (url) {
+                            console.log(`${e.key} - showing HTML page ${pageIndex + 1}: ${url}`);
+                            this.showHtmlPage(url, pageIndex + 1);
+                        } else {
+                            this.showStatus(`No HTML page configured for ${e.key} (open Settings with F1)`);
+                        }
                     } else if (e.key === ' ') {
                         e.preventDefault();
                         console.log('Spacebar - toggling timer');
@@ -506,6 +560,7 @@
                     } else if (e.key === ';') {
                         e.preventDefault();
                         console.log('; - playing loop video');
+                        this.hideHtmlPage();
                         this.playLoopVideo();
                     } else if (e.code >= 'Numpad1' && e.code <= 'Numpad8') {
                         // Handle numpad keys (Numpad1-Numpad8) for sound playback
@@ -1207,8 +1262,9 @@
                 this.currentImageNumber = null;
                 this.currentImageExtension = null;
 
-                // Hide image if showing
+                // Hide image and HTML frame if showing
                 this.hideImage();
+                this.hideHtmlPage();
 
                 // Use file path
                 if (this.settings.mediaDirectory) {
@@ -1243,8 +1299,9 @@
                 this.currentImageNumber = null;
                 this.currentImageExtension = null;
 
-                // Hide image if showing
+                // Hide image and HTML frame if showing
                 this.hideImage();
+                this.hideHtmlPage();
 
                 // Use the improved loading method
                 this.loadVideoSource(url, false).catch(e => {
@@ -1376,7 +1433,40 @@
                 }
             }
 
+            showHtmlPage(url, slotNumber) {
+                // Hide image if showing
+                this.hideImage();
+
+                // Pause video and hide it
+                this.video.pause();
+                this.video.style.display = 'none';
+
+                // Load and show the iframe
+                this.htmlFrame.src = url;
+                this.htmlFrame.style.display = 'block';
+
+                // Reset image navigation state
+                this.isViewingImage = false;
+                this.currentImageNumber = null;
+                this.currentImageExtension = null;
+
+                this.showStatus(`Showing HTML page ${slotNumber} (press ; to return to loop video)`);
+                console.log(`HTML page ${slotNumber} displayed: ${url}`);
+            }
+
+            hideHtmlPage() {
+                if (this.htmlFrame.style.display !== 'none') {
+                    this.htmlFrame.style.display = 'none';
+                    this.htmlFrame.src = '';
+                    this.video.style.display = 'block';
+                    console.log('HTML frame hidden');
+                }
+            }
+
             showImage(src) {
+                // Hide HTML frame if showing
+                this.hideHtmlPage();
+
                 // Pause video
                 this.video.pause();
                 this.video.style.display = 'none';
