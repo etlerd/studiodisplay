@@ -354,6 +354,7 @@
                 this.defaultTimerSeconds = 1200; // 20 minutes limit
                 this.flashInterval = null; // For flashing
                 this.audioContext = null; // For sound generation
+                this.htmlBlobUrl = null; // For HTML page blob URLs
 
                 // Track current image state for arrow key navigation
                 this.currentImageNumber = null; // e.g., "01", "02", etc.
@@ -1496,7 +1497,7 @@
                 }
             }
 
-            showHtmlPage(url, slotNumber) {
+            async showHtmlPage(url, slotNumber) {
                 // Hide image if showing
                 this.hideImage();
 
@@ -1504,23 +1505,58 @@
                 this.video.pause();
                 this.video.style.display = 'none';
 
-                // Load and show the iframe
-                this.htmlFrame.src = url;
-                this.htmlFrame.style.display = 'block';
-
                 // Reset image navigation state
                 this.isViewingImage = false;
                 this.currentImageNumber = null;
                 this.currentImageExtension = null;
 
-                this.showStatus(`Showing HTML page ${slotNumber} (press ; to return to loop video)`);
-                console.log(`HTML page ${slotNumber} displayed: ${url}`);
+                this.showStatus(`Loading HTML page ${slotNumber}...`);
+                console.log(`Loading HTML page ${slotNumber}: ${url}`);
+
+                try {
+                    // Fetch the raw HTML content.
+                    // GitHub Release assets are served with Content-Disposition: attachment,
+                    // which causes browsers to download rather than display in an iframe.
+                    // Fetching and creating a blob URL bypasses that header.
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    const html = await response.text();
+
+                    // Inject a <base> tag so relative URLs (images, scripts, CSS) resolve
+                    // correctly against the original file's location.
+                    const baseTag = `<base href="${url}">`;
+                    const modifiedHtml = html.replace(/(<head[^>]*>)/i, `$1${baseTag}`);
+                    const finalHtml = modifiedHtml !== html ? modifiedHtml : `${baseTag}${html}`;
+
+                    // Revoke any previous blob URL to avoid memory leaks
+                    if (this.htmlBlobUrl) {
+                        URL.revokeObjectURL(this.htmlBlobUrl);
+                    }
+                    const blob = new Blob([finalHtml], { type: 'text/html' });
+                    this.htmlBlobUrl = URL.createObjectURL(blob);
+
+                    this.htmlFrame.src = this.htmlBlobUrl;
+                    this.htmlFrame.style.display = 'block';
+
+                    this.showStatus(`Showing HTML page ${slotNumber} (press ; to return to loop video)`);
+                    console.log(`HTML page ${slotNumber} displayed via blob URL`);
+                } catch (error) {
+                    console.error('Error loading HTML page:', error);
+                    this.showStatus(`Could not load HTML page ${slotNumber}: ${error.message}`);
+                    this.video.style.display = 'block';
+                }
             }
 
             hideHtmlPage() {
                 if (this.htmlFrame.style.display !== 'none') {
                     this.htmlFrame.style.display = 'none';
                     this.htmlFrame.src = '';
+                    if (this.htmlBlobUrl) {
+                        URL.revokeObjectURL(this.htmlBlobUrl);
+                        this.htmlBlobUrl = null;
+                    }
                     this.video.style.display = 'block';
                     console.log('HTML frame hidden');
                 }
