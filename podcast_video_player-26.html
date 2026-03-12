@@ -47,6 +47,18 @@
             display: none;
         }
 
+        #htmlFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            z-index: 5;
+            background: #000;
+        }
+
         #timerOverlay {
             position: absolute;
             right: 20px;
@@ -227,6 +239,7 @@
     <div id="videoContainer">
         <video id="mainVideo"></video>
         <img id="mainImage" alt="Display Image">
+        <iframe id="htmlFrame" allowfullscreen allow="autoplay; fullscreen"></iframe>
         
         <div id="timerOverlay">00:00</div>
         
@@ -237,6 +250,7 @@
         <div id="helpText">
             F1: Settings | SPACE: Timer Start/Pause | ': Timer Reset<br>
             ;: Loop Video | 1-9,0: Images (01-10) | a-z: Videos (01-26) | Numpad 1-8: Sounds<br>
+            Shift+A-Z: HTML Pages 01-26 (from media dir) | F2–F6: HTML Pages (configured URLs)<br>
             ←/→: Navigate Images | F11: Fullscreen | ESC: Exit Fullscreen
         </div>
         
@@ -274,16 +288,32 @@
                 <strong>Numbered files:</strong> Upload files to your hosting location (e.g., same GitHub Release as your loop video).<br>
                 <strong>Number keys (1-9,0):</strong> Display images 01-10 (formats: .png, .jpg, .jpeg, .gif, .webp)<br>
                 <strong>Letter keys (a-z):</strong> Play videos 01-26 (formats: .mp4, .mov, .avi, .webm)<br>
+                <strong>Shift+letter (A-Z):</strong> Display HTML pages 01-26 (formats: .html, .htm)<br>
                 <strong>Semicolon (;):</strong> Return to loop video<br>
                 <strong>Numpad keys 1-8:</strong> Play sounds over current media (formats: .mp3, .wav, .m4a)<br>
                 <strong>File naming (GitHub Releases):</strong> Use any descriptive name starting with the number:<br>
                 • Videos: 01-intro.mp4, 02-sermon-clip.mov<br>
                 • Images: 03-announcement.png, 04-worship-lyrics.jpg<br>
                 • Sounds: 05-applause.mp3, 06-ding.m4a<br>
-                <strong>File naming (other hosting):</strong> Use exact numbered filenames: 01.mp4, 02.png, 03.mp3, etc.
+                • HTML pages: 01-rundown.html, 02-graphics.html<br>
+                <strong>File naming (other hosting):</strong> Use exact numbered filenames: 01.mp4, 02.png, 03.mp3, 01.html, etc.
             </small>
         </div>
         
+        <div class="setting-group">
+            <label>HTML Pages (F2–F6):</label>
+            <input type="text" id="htmlPage1" placeholder="F2: https://example.com/page1.html" style="margin-bottom:5px;">
+            <input type="text" id="htmlPage2" placeholder="F3: https://example.com/page2.html" style="margin-bottom:5px;">
+            <input type="text" id="htmlPage3" placeholder="F4: https://example.com/page3.html" style="margin-bottom:5px;">
+            <input type="text" id="htmlPage4" placeholder="F5: https://example.com/page4.html" style="margin-bottom:5px;">
+            <input type="text" id="htmlPage5" placeholder="F6: https://example.com/page5.html">
+            <small>
+                Enter up to 5 HTML page URLs. Press F2–F6 to display them fullscreen.<br>
+                Press ; (semicolon) to return to the loop video.<br>
+                <strong>Note:</strong> Some sites block embedding via iframes (X-Frame-Options). Use pages you control or local files (file:///path/to/page.html).
+            </small>
+        </div>
+
         <div class="setting-group">
             <label for="timerDuration">Timer Limit (MM:SS):</label>
             <input type="text" id="timerDuration" placeholder="20:00" pattern="[0-9]{1,2}:[0-9]{2}">
@@ -313,6 +343,7 @@
                 console.log('Creating PodcastPlayer...');
                 this.video = document.getElementById('mainVideo');
                 this.image = document.getElementById('mainImage');
+                this.htmlFrame = document.getElementById('htmlFrame');
                 this.timerOverlay = document.getElementById('timerOverlay');
                 this.settingsPanel = document.getElementById('settingsPanel');
                 this.status = document.getElementById('status');
@@ -333,7 +364,8 @@
                     mediaDirectory: '',
                     loopVideoName: '',
                     timerDuration: '20:00',
-                    autoStartTimer: false
+                    autoStartTimer: false,
+                    htmlPages: ['', '', '', '', '']
                 };
 
                 // Cache for GitHub Release file listings
@@ -403,6 +435,13 @@
                 document.getElementById('loopVideoName').value = this.settings.loopVideoName || '';
                 document.getElementById('timerDuration').value = this.settings.timerDuration || '20:00';
 
+                // Populate HTML page URL fields
+                const htmlPages = this.settings.htmlPages || ['', '', '', '', ''];
+                for (let i = 0; i < 5; i++) {
+                    const field = document.getElementById(`htmlPage${i + 1}`);
+                    if (field) field.value = htmlPages[i] || '';
+                }
+
                 console.log('Settings loaded - Directory:', `"${this.settings.mediaDirectory}"`);
                 console.log('Settings loaded - Loop video:', `"${this.settings.loopVideoName}"`);
                 console.log('Settings loaded - Timer:', `"${this.settings.timerDuration}"`);
@@ -421,6 +460,13 @@
                 this.settings.mediaDirectory = dirValue;
                 this.settings.loopVideoName = loopValue;
                 this.settings.timerDuration = timerValue;
+
+                // Save HTML page URLs
+                this.settings.htmlPages = [];
+                for (let i = 0; i < 5; i++) {
+                    const field = document.getElementById(`htmlPage${i + 1}`);
+                    this.settings.htmlPages.push(field ? field.value.trim() : '');
+                }
                 
                 console.log('Settings object before save:', JSON.stringify(this.settings, null, 2));
                 
@@ -495,6 +541,16 @@
                         e.preventDefault();
                         console.log('F1 - opening settings');
                         this.toggleSettings();
+                    } else if (e.key >= 'F2' && e.key <= 'F6') {
+                        e.preventDefault();
+                        const pageIndex = parseInt(e.key.slice(1)) - 2; // F2=0, F3=1, ...
+                        const url = (this.settings.htmlPages || [])[pageIndex] || '';
+                        if (url) {
+                            console.log(`${e.key} - showing HTML page ${pageIndex + 1}: ${url}`);
+                            this.showHtmlPage(url, pageIndex + 1);
+                        } else {
+                            this.showStatus(`No HTML page configured for ${e.key} (open Settings with F1)`);
+                        }
                     } else if (e.key === ' ') {
                         e.preventDefault();
                         console.log('Spacebar - toggling timer');
@@ -506,6 +562,7 @@
                     } else if (e.key === ';') {
                         e.preventDefault();
                         console.log('; - playing loop video');
+                        this.hideHtmlPage();
                         this.playLoopVideo();
                     } else if (e.code >= 'Numpad1' && e.code <= 'Numpad8') {
                         // Handle numpad keys (Numpad1-Numpad8) for sound playback
@@ -546,6 +603,16 @@
                         this.tryLoadNumberedVideo(num).catch(err => {
                             console.error('Error loading video:', err);
                             this.showStatus(`Error loading video ${num}: ${err.message}`);
+                        });
+                    } else if (e.key >= 'A' && e.key <= 'Z') {
+                        e.preventDefault();
+                        // Map Shift+A-Z to 01-26 (HTML pages)
+                        const letterIndex = e.key.charCodeAt(0) - 'A'.charCodeAt(0) + 1;
+                        const num = letterIndex.toString().padStart(2, '0');
+                        console.log(`Shift+${e.key} pressed - trying to load HTML page ${num}`);
+                        this.tryLoadNumberedHtml(num).catch(err => {
+                            console.error('Error loading HTML page:', err);
+                            this.showStatus(`Error loading HTML page ${num}: ${err.message}`);
                         });
                     }
                 };
@@ -860,6 +927,57 @@
                 }
 
                 console.log('=== Finished trying all image patterns ===');
+            }
+
+            async tryLoadNumberedHtml(number) {
+                if (!this.settings.mediaDirectory) {
+                    this.showStatus('Media directory not configured');
+                    return;
+                }
+
+                const htmlExtensions = ['.html', '.htm'];
+
+                console.log(`=== Trying to find HTML file ${number}... ===`);
+                console.log('Media directory:', this.settings.mediaDirectory);
+
+                try {
+                    // Try using GitHub API for flexible file discovery
+                    console.log('Attempting GitHub API file discovery for HTML...');
+
+                    const foundFile = await this.findFileByPattern(number, htmlExtensions);
+                    if (foundFile) {
+                        console.log(`✓ Found HTML file via GitHub API: ${foundFile.name}`);
+                        this.showHtmlPage(foundFile.url, `${number} (${foundFile.name})`);
+                        return;
+                    }
+
+                    console.log('No HTML file found via GitHub API, trying fallback patterns...');
+                } catch (error) {
+                    console.error('GitHub API discovery failed:', error);
+                    console.log('Falling back to pattern matching...');
+                }
+
+                // Fallback: try exact filenames (for non-GitHub hosting)
+                console.log('Using fallback pattern matching...');
+
+                for (const ext of htmlExtensions) {
+                    const htmlPath = this.buildFilePath(number, ext);
+                    console.log(`Trying HTML: ${htmlPath}`);
+
+                    // Probe via fetch (HEAD request) since we can't use img/video elements for HTML
+                    fetch(htmlPath, { method: 'HEAD' })
+                        .then(response => {
+                            if (response.ok) {
+                                console.log(`Found HTML: ${number}${ext}`);
+                                this.showHtmlPage(htmlPath, number);
+                            }
+                        })
+                        .catch(() => {
+                            console.log(`HTML not found: ${number}${ext}`);
+                        });
+                }
+
+                console.log('=== Finished trying all HTML patterns ===');
             }
 
             async tryLoadNumberedVideo(number) {
@@ -1207,8 +1325,9 @@
                 this.currentImageNumber = null;
                 this.currentImageExtension = null;
 
-                // Hide image if showing
+                // Hide image and HTML frame if showing
                 this.hideImage();
+                this.hideHtmlPage();
 
                 // Use file path
                 if (this.settings.mediaDirectory) {
@@ -1243,8 +1362,9 @@
                 this.currentImageNumber = null;
                 this.currentImageExtension = null;
 
-                // Hide image if showing
+                // Hide image and HTML frame if showing
                 this.hideImage();
+                this.hideHtmlPage();
 
                 // Use the improved loading method
                 this.loadVideoSource(url, false).catch(e => {
@@ -1376,7 +1496,40 @@
                 }
             }
 
+            showHtmlPage(url, slotNumber) {
+                // Hide image if showing
+                this.hideImage();
+
+                // Pause video and hide it
+                this.video.pause();
+                this.video.style.display = 'none';
+
+                // Load and show the iframe
+                this.htmlFrame.src = url;
+                this.htmlFrame.style.display = 'block';
+
+                // Reset image navigation state
+                this.isViewingImage = false;
+                this.currentImageNumber = null;
+                this.currentImageExtension = null;
+
+                this.showStatus(`Showing HTML page ${slotNumber} (press ; to return to loop video)`);
+                console.log(`HTML page ${slotNumber} displayed: ${url}`);
+            }
+
+            hideHtmlPage() {
+                if (this.htmlFrame.style.display !== 'none') {
+                    this.htmlFrame.style.display = 'none';
+                    this.htmlFrame.src = '';
+                    this.video.style.display = 'block';
+                    console.log('HTML frame hidden');
+                }
+            }
+
             showImage(src) {
+                // Hide HTML frame if showing
+                this.hideHtmlPage();
+
                 // Pause video
                 this.video.pause();
                 this.video.style.display = 'none';
