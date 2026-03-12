@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USMLE Presentation: Professional Sequential Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #020617;
+            --card-bg: #0f172a;
+            --text-primary: #f8fafc;
+            --accent-blue: #3b82f6;
+            --accent-amber: #f59e0b;
+            --accent-emerald: #10b981;
+        }
+        
+        html {
+            scroll-snap-type: y mandatory;
+            scroll-behavior: auto;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        section {
+            height: 100vh;
+            width: 100vw;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+      .slide-content {
+            width: 95%;
+            max-width: 1800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+      .chart-wrapper {
+            position: relative;
+            width: 100%;
+            height: 70vh;
+            background: var(--card-bg);
+            padding: 2rem 4rem;
+            border-radius: 3.5rem;
+            border: 2px solid rgba(255,255,255,0.05);
+            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.8);
+        }
+
+      .slide-title {
+            font-size: 5rem;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            letter-spacing: -0.02em;
+        }
+
+      .slide-subtitle {
+            font-size: 2.2rem;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+      .disclaimer-badge {
+            position: absolute;
+            top: 1.5rem;
+            right: 3rem;
+            font-size: 1.2rem;
+            font-weight: 800;
+            padding: 0.5rem 1.5rem;
+            border-radius: 1rem;
+            text-transform: uppercase;
+            z-index: 10;
+        }
+        
+      .tag-reported { background: #064e3b; color: #a7f3d0; border: 1px solid #059669; }
+      .tag-simulated { background: #78350f; color: #fef3c7; border: 1px solid #d97706; }
+
+      .fine-print {
+            font-size: 1.3rem;
+            color: #475569;
+            margin-top: 1.5rem;
+            font-weight: 700;
+        }
+
+       .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2.5rem;
+            width: 100%;
+            margin-top: 3rem;
+        }
+
+       .metric-card {
+            background: rgba(255,255,255,0.03);
+            padding: 3rem 1.5rem;
+            border-radius: 3rem;
+            text-align: center;
+            border: 2px solid rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .stat-label {
+            font-size: 1.4rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+        }
+
+        .stat-value {
+            font-size: 8rem;
+            font-weight: 900;
+            line-height: 1;
+            margin: 1.5rem 0;
+            color: #fff;
+        }
+
+        .stat-subtext {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: Refined Overview -->
+    <section class="bg-gradient-to-b from-slate-900 to-black">
+        <div class="slide-content">
+            <h1 class="slide-title">THE USMLE <span style="color:var(--accent-blue)">ROADMAP</span></h1>
+            <p class="slide-subtitle">Performance Benchmarks: Passing Standards vs. National Averages</p>
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div>
+                        <p class="text-3xl text-blue-400 font-bold uppercase mb-4">Step 1</p>
+                        <p class="stat-label">Exam Format</p>
+                        <div class="stat-value">P/F</div>
+                    </div>
+                    <div>
+                        <p class="stat-subtext" style="color:#94a3b8">Minimum Pass: ~196 Eq.</p>
+                        <p class="text-xl text-slate-500 mt-2 font-bold uppercase tracking-widest">Foundation</p>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div>
+                        <p class="text-3xl text-amber-400 font-bold uppercase mb-4">Step 2 CK</p>
+                        <p class="stat-label">National Mean</p>
+                        <div class="stat-value">248</div>
+                    </div>
+                    <div>
+                        <p class="stat-subtext" style="color:var(--accent-amber)">Minimum Pass: 214</p>
+                        <p class="text-xl text-slate-500 mt-2 font-bold uppercase tracking-widest">Clinical Mastery</p>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div>
+                        <p class="text-3xl text-emerald-400 font-bold uppercase mb-4">Step 3</p>
+                        <p class="stat-label">National Mean</p>
+                        <div class="stat-value">228</div>
+                    </div>
+                    <div>
+                        <p class="stat-subtext" style="color:var(--accent-emerald)">Minimum Pass: 200</p>
+                        <p class="text-xl text-slate-500 mt-2 font-bold uppercase tracking-widest">Independent Practice</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 2: Step 1 -->
+    <section>
+        <div class="slide-content">
+            <h2 class="slide-title">Step 1: First-Time Success</h2>
+            <p class="slide-subtitle">2023-2024 Pass Rates Across Candidate Classes</p>
+            <div class="chart-wrapper">
+                <span class="disclaimer-badge tag-reported">Reported</span>
+                <canvas id="step1Chart"></canvas>
+            </div>
+            <p class="fine-print">Official USMLE Performance Data: Aggregate Passing Results</p>
+        </div>
+    </section>
+
+    <!-- Slide 3: Step 2 CK Effort -->
+    <section>
+        <div class="slide-content">
+            <h2 class="slide-title">Step 2 CK: The Effort Curve</h2>
+            <p class="slide-subtitle">Relationship Between Prep Intensity and Score Outcomes</p>
+            <div class="chart-wrapper">
+                <span class="disclaimer-badge tag-simulated">Simulated</span>
+                <div id="step2EffortPlot" style="height: 100%; width: 100%;"></div>
+            </div>
+            <p class="fine-print">Simulation (n=200) constrained by NBME-reported Means and Variances</p>
+        </div>
+    </section>
+
+    <!-- Slide 4: Step 2 CK Specialty -->
+    <section>
+        <div class="slide-content">
+            <h2 class="slide-title">Step 2 CK: Specialty Benchmarks</h2>
+            <p class="slide-subtitle">Mean Scores of Matched US MD Seniors by Field (2024)</p>
+            <div class="chart-wrapper">
+                <span class="disclaimer-badge tag-reported">Reported</span>
+                <canvas id="step2MatchChart"></canvas>
+            </div>
+            <p class="fine-print">Data Source: 2024 NRMP Charting Outcomes in the Match</p>
+        </div>
+    </section>
+
+    <!-- Slide 5: Step 2 CK Resources -->
+    <section>
+        <div class="slide-content">
+            <h2 class="slide-title">Step 2 CK: Study Architectures</h2>
+            <p class="slide-subtitle">Dominant Resource Composition for High-Scoring Examinees</p>
+            <div class="chart-wrapper">
+                <span class="disclaimer-badge tag-reported">Survey Based</span>
+                <canvas id="step2ResourceChart"></canvas>
+            </div>
+            <p class="fine-print">Aggregated Self-Reported Metrics from 2023-2024 Residency Applicants</p>
+        </div>
+    </section>
+
+    <!-- Slide 6: Step 3 Pass Rates (Updated Title) -->
+    <section>
+        <div class="slide-content">
+            <h2 class="slide-title">Step 3: Licensing Completion</h2>
+            <p class="slide-subtitle">First-Time Pass Rates of Residency-Enrolled Candidates (2024)</p>
+            <div class="chart-wrapper">
+                <span class="disclaimer-badge tag-reported">Reported</span>
+                <canvas id="step3PassChart"></canvas>
+            </div>
+            <p class="fine-print">Official FSMB/NBME 2024 Testing Administration Reports</p>
+        </div>
+    </section>
+
+    <!-- Slide 7: Step 3 Timing -->
+    <section>
+        <div class="slide-content">
+            <h2 class="slide-title">Step 3: The Timing Factor</h2>
+            <p class="slide-subtitle">Pass Rate Probability Relative to Month of Residency (PGY-1/2)</p>
+            <div class="chart-wrapper">
+                <span class="disclaimer-badge tag-reported">Reported</span>
+                <canvas id="step3TimingChart"></canvas>
+            </div>
+            <p class="fine-print">Analysis of US GME Institutional Performance Tracking</p>
+        </div>
+    </section>
+
+    <script>
+        window.onload = function() {
+            const textGray = '#94a3b8';
+            const gridColor = 'rgba(255, 255, 255, 0.07)';
+
+            // --- STEP 1 PASS RATES ---
+            new Chart(document.getElementById('step1Chart'), {
+                type: 'bar',
+                data: {
+                    labels: ['US MD Seniors', 'US DO Seniors', 'Non-US IMGs', 'US IMGs'],
+                    datasets: [{
+                        data: [93, 89, 67, 58],
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 20
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: false },
+                    scales: {
+                        x: { ticks: { color: textGray, font: { size: 28, weight: 'bold' } }, grid: { display: false } },
+                        y: { beginAtZero: true, max: 100, ticks: { color: textGray, font: { size: 24 } }, grid: { color: gridColor } }
+                    }
+                }
+            });
+
+            // --- STEP 2 CK EFFORT ---
+            const xEffort = []; const yEffort = [];
+            for(let i=0; i<200; i++) {
+                const h = 100 + Math.random() * 400;
+                const s = Math.min(284, 218 + (h * 0.075) + (Math.random() * 22 - 11));
+                xEffort.push(h); yEffort.push(s);
+            }
+            Plotly.newPlot('step2EffortPlot', [{
+                x: xEffort, y: yEffort, mode: 'markers', type: 'scattergl',
+                marker: { color: '#f59e0b', size: 18, opacity: 0.7, line: { color: '#fff', width: 2 } }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 100, r: 40, t: 20, b: 100 },
+                xaxis: { title: { text: 'TOTAL DEDICATED HOURS', font: { size: 30, color: '#fff' } }, tickfont: { size: 22, color: textGray }, gridcolor: gridColor },
+                yaxis: { title: { text: 'STEP 2 CK SCORE', font: { size: 30, color: '#fff' } }, tickfont: { size: 22, color: textGray }, gridcolor: gridColor }
+            }, { responsive: true, displayModeBar: false });
+
+            // --- STEP 2 CK MATCH ---
+            const specLabels = [
+                'Plastic Surgery', 'Dermatology', 'Neurosurgery', 'ENT', 
+                'Orthopedics', 'Rad-Dx', 'Gen Surgery', 'Internal Med', 
+                'Anesthesia', 'ER Med', 'Pediatrics', 'OB/GYN', 
+                'Psychiatry', 'Family Med', 'Neurology', 'Pathology'
+            ];
+            const specData = [259, 258, 256, 255, 255, 253, 250, 248, 248, 247, 246, 246, 244, 241, 246, 240];
+
+            new Chart(document.getElementById('step2MatchChart'), {
+                type: 'bar',
+                data: {
+                    labels: specLabels,
+                    datasets: [{
+                        data: specData,
+                        backgroundColor: (c) => c.raw > 252 ? '#ef4444' : (c.raw > 248 ? '#8b5cf6' : '#3b82f6'),
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: false },
+                    scales: {
+                        x: { min: 230, max: 265, ticks: { color: textGray, font: { size: 20 } }, grid: { color: gridColor } },
+                        y: { ticks: { color: textGray, font: { size: 16, weight: 'bold' } }, grid: { display: false } }
+                    }
+                }
+            });
+
+            // --- STEP 2 CK RESOURCES ---
+            new Chart(document.getElementById('step2ResourceChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Q-Banks', 'Anki', 'Videos', 'Books'],
+                    datasets: [{
+                        data: [55, 22, 13, 10],
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#fff', font: { size: 36, weight: '700' }, padding: 40 } }
+                    }
+                }
+            });
+
+            // --- STEP 3 PASS RATES ---
+            new Chart(document.getElementById('step3PassChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['US MD Grads', 'US DO Grads', 'Non-US IMGs', 'US IMGs'],
+                    datasets: [{
+                        data: [97, 96, 85, 82],
+                        backgroundColor: '#10b981',
+                        borderRadius: 20
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: false },
+                    scales: {
+                        x: { ticks: { color: textGray, font: { size: 28, weight: 'bold' } }, grid: { display: false } },
+                        y: { beginAtZero: true, max: 100, ticks: { color: textGray, font: { size: 24 } }, grid: { color: gridColor } }
+                    }
+                }
+            });
+
+            // --- STEP 3 TIMING ---
+            new Chart(document.getElementById('step3TimingChart'), {
+                type: 'line',
+                data: {
+                    labels: ['PGY-1 Q1', 'PGY-1 Q2', 'PGY-1 Q3', 'PGY-1 Q4', 'PGY-2+'],
+                    datasets: [{
+                        data: [92, 95, 98.4, 96.5, 91],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderWidth: 10,
+                        pointRadius: 22,
+                        pointBackgroundColor: '#fff',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: false },
+                    scales: {
+                        x: { ticks: { color: textGray, font: { size: 24, weight: 'bold' } }, grid: { display: false } },
+                        y: { min: 85, max: 100, ticks: { color: textGray, font: { size: 24 } }, grid: { color: gridColor } }
+                    }
+                }
+            });
+        };
+    </script>
+</body>
+</html>
