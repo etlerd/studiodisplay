@@ -621,7 +621,7 @@
                             console.error('Error loading video:', err);
                             this.showStatus(`Error loading video ${num}: ${err.message}`);
                         });
-                    } else if (e.key >= 'A' && e.key <= 'Z') {
+                    } else if (e.key.length === 1 && e.key >= 'A' && e.key <= 'Z') {
                         e.preventDefault();
                         // Map Shift+A-Z to 01-26 (HTML pages)
                         const letterIndex = e.key.charCodeAt(0) - 'A'.charCodeAt(0) + 1;
@@ -636,7 +636,42 @@
                 
                 document.addEventListener('keydown', handleKeydown);
                 console.log('Keyboard event listener added');
-                
+
+                // Forward keyboard shortcuts from iframe content to parent document.
+                // On Mac/Chrome the browser shifts focus into the iframe when it loads,
+                // so the parent's keydown listener never fires.  We re-dispatch every key
+                // that isn't a scroll/navigation key so shortcuts like ; still work.
+                // Scroll keys (PageUp, PageDown, Arrows, Home, End) are intentionally
+                // left alone so the iframe page can still be scrolled with the keyboard.
+                this.htmlFrame.addEventListener('load', () => {
+                    try {
+                        const iframeDoc = this.htmlFrame.contentDocument;
+                        if (!iframeDoc) return;
+                        const scrollKeys = new Set([
+                            'PageUp', 'PageDown',
+                            'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+                            'Home', 'End'
+                        ]);
+                        iframeDoc.addEventListener('keydown', (e) => {
+                            if (scrollKeys.has(e.key)) return; // let iframe scroll naturally
+                            document.dispatchEvent(new KeyboardEvent('keydown', {
+                                key: e.key,
+                                code: e.code,
+                                shiftKey: e.shiftKey,
+                                ctrlKey: e.ctrlKey,
+                                altKey: e.altKey,
+                                metaKey: e.metaKey,
+                                bubbles: true,
+                                cancelable: true
+                            }));
+                        });
+                        console.log('Iframe keyboard forwarding set up');
+                    } catch (err) {
+                        // Cross-origin iframe — cannot access contentDocument
+                        console.log('Cross-origin iframe, keyboard forwarding unavailable');
+                    }
+                });
+
                 // Show help on mousemove, hide after delay
                 let helpTimeout;
                 document.addEventListener('mousemove', () => {
@@ -1520,6 +1555,10 @@
                 // HTML files must NOT be hosted there — use the repo's html/ folder instead.
                 this.htmlFrame.src = url;
                 this.htmlFrame.style.display = 'block';
+                // Focus the iframe so scroll keys (PageUp/PageDown/Arrows) work
+                // immediately without requiring a click.  Shortcut keys (;, letters,
+                // etc.) are forwarded to the parent via the load-time keydown listener.
+                this.htmlFrame.focus();
 
                 this.showStatus(`Showing HTML page ${slotNumber} (press ; to return to loop video)`);
                 console.log(`HTML page ${slotNumber} displayed: ${url}`);
