@@ -384,6 +384,7 @@
                 // Cache for GitHub Release file listings
                 this.githubFilesCache = null;
                 this.githubReleaseInfo = null;
+                this.mediaRequestId = 0; // Incremented on each media request to cancel stale callbacks
                 
                 console.log('About to initialize...');
                 this.init();
@@ -794,6 +795,7 @@
                     return;
                 }
 
+                const requestId = ++this.mediaRequestId;
                 const audioExtensions = ['.mp3', '.wav', '.m4a'];
 
                 console.log(`=== Trying to find sound file ${number}... ===`);
@@ -803,6 +805,8 @@
                     // Try using GitHub API for flexible file discovery
                     console.log('Attempting GitHub API file discovery...');
                     const foundFile = await this.findFileByPattern(number, audioExtensions);
+
+                    if (this.mediaRequestId !== requestId) return; // Superseded by newer request
 
                     if (foundFile) {
                         console.log(`✓ Found file via GitHub API: ${foundFile.name}`);
@@ -815,6 +819,8 @@
                     console.error('GitHub API discovery failed:', error);
                     console.log('Falling back to pattern matching...');
                 }
+
+                if (this.mediaRequestId !== requestId) return;
 
                 // Fallback: try common naming patterns (for non-GitHub hosting)
                 console.log('Using fallback pattern matching...');
@@ -836,6 +842,7 @@
                         // Create a temporary audio to test if it loads
                         const testAudio = new Audio();
                         testAudio.onloadedmetadata = () => {
+                            if (this.mediaRequestId !== requestId) return;
                             console.log(`Found audio: ${number}${pattern}${ext}`);
                             this.playNumberedSound(number, `${pattern}${ext}`);
                         };
@@ -935,6 +942,7 @@
                     return;
                 }
 
+                const requestId = ++this.mediaRequestId;
                 const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
 
                 console.log(`=== Trying to find image file ${number}... ===`);
@@ -945,6 +953,8 @@
                     console.log('Attempting GitHub API file discovery for images...');
 
                     const foundImage = await this.findFileByPattern(number, imageExtensions);
+                    if (this.mediaRequestId !== requestId) return;
+
                     if (foundImage) {
                         console.log(`✓ Found image via GitHub API: ${foundImage.name}`);
                         // Extract extension from filename
@@ -959,6 +969,8 @@
                     console.log('Falling back to pattern matching...');
                 }
 
+                if (this.mediaRequestId !== requestId) return;
+
                 // Fallback: try exact filenames (for non-GitHub hosting)
                 console.log('Using fallback pattern matching...');
 
@@ -969,6 +981,7 @@
                     // Create a temporary image to test if it loads
                     const testImg = new Image();
                     testImg.onload = () => {
+                        if (this.mediaRequestId !== requestId) return;
                         console.log(`Found image: ${number}${ext}`);
                         this.playNumberedImage(number, ext);
                     };
@@ -1026,6 +1039,7 @@
                     return;
                 }
 
+                const requestId = ++this.mediaRequestId;
                 const videoExtensions = ['.mp4', '.mov', '.avi', '.webm'];
 
                 console.log(`=== Trying to find video file ${number}... ===`);
@@ -1036,6 +1050,8 @@
                     console.log('Attempting GitHub API file discovery for videos...');
 
                     const foundVideo = await this.findFileByPattern(number, videoExtensions);
+                    if (this.mediaRequestId !== requestId) return;
+
                     if (foundVideo) {
                         console.log(`✓ Found video via GitHub API: ${foundVideo.name}`);
                         this.playNumberedVideoFromUrl(foundVideo.url, foundVideo.name);
@@ -1048,6 +1064,8 @@
                     console.log('Falling back to pattern matching...');
                 }
 
+                if (this.mediaRequestId !== requestId) return;
+
                 // Fallback: try exact filenames (for non-GitHub hosting)
                 console.log('Using fallback pattern matching...');
 
@@ -1058,6 +1076,7 @@
                     // Create a temporary video to test if it loads
                     const testVideo = document.createElement('video');
                     testVideo.onloadedmetadata = () => {
+                        if (this.mediaRequestId !== requestId) return;
                         console.log(`Found video: ${number}${ext}`);
                         this.playNumberedVideo(number, ext);
                     };
