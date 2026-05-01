@@ -612,22 +612,22 @@
                             console.error('Error loading image:', err);
                             this.showStatus(`Error loading image ${num}: ${err.message}`);
                         });
-                    } else if (e.key >= 'a' && e.key <= 'z') {
+                    } else if (!e.shiftKey && e.code >= 'KeyA' && e.code <= 'KeyZ') {
                         e.preventDefault();
-                        // Map a-z to 01-26 (videos only)
-                        const letterIndex = e.key.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+                        // Map a-z physical keys to 01-26 (videos only)
+                        const letterIndex = e.code.charCodeAt(3) - 'A'.charCodeAt(0) + 1;
                         const num = letterIndex.toString().padStart(2, '0');
-                        console.log(`Letter ${e.key} pressed - trying to load video ${num}`);
+                        console.log(`Letter ${e.code} pressed - trying to load video ${num}`);
                         this.tryLoadNumberedVideo(num).catch(err => {
                             console.error('Error loading video:', err);
                             this.showStatus(`Error loading video ${num}: ${err.message}`);
                         });
-                    } else if (e.key.length === 1 && e.key >= 'A' && e.key <= 'Z') {
+                    } else if (e.shiftKey && e.code >= 'KeyA' && e.code <= 'KeyZ') {
                         e.preventDefault();
-                        // Map Shift+A-Z to 01-26 (HTML pages)
-                        const letterIndex = e.key.charCodeAt(0) - 'A'.charCodeAt(0) + 1;
+                        // Map Shift+A-Z physical keys to 01-26 (HTML pages)
+                        const letterIndex = e.code.charCodeAt(3) - 'A'.charCodeAt(0) + 1;
                         const num = letterIndex.toString().padStart(2, '0');
-                        console.log(`Shift+${e.key} pressed - trying to load HTML page ${num}`);
+                        console.log(`Shift+${e.code} pressed - trying to load HTML page ${num}`);
                         this.tryLoadNumberedHtml(num).catch(err => {
                             console.error('Error loading HTML page:', err);
                             this.showStatus(`Error loading HTML page ${num}: ${err.message}`);
