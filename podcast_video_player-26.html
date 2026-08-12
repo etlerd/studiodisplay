@@ -59,6 +59,21 @@
             background: #000;
         }
 
+        #qrCodeOverlay {
+            position: absolute;
+            left: 20px;
+            bottom: 20px;
+            width: 130px;
+            height: 130px;
+            background: white;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+            object-fit: contain;
+            z-index: 10;
+            display: none;
+        }
+
         #timerOverlay {
             position: absolute;
             right: 20px;
@@ -240,7 +255,8 @@
         <video id="mainVideo"></video>
         <img id="mainImage" alt="Display Image">
         <iframe id="htmlFrame" allowfullscreen allow="autoplay; fullscreen"></iframe>
-        
+        <img id="qrCodeOverlay" alt="QR Code">
+
         <div id="timerOverlay">00:00</div>
         
         <button id="settingsIcon">
@@ -327,6 +343,22 @@
         </div>
 
         <div class="setting-group">
+            <label style="display: flex; align-items: center;">
+                <input type="checkbox" id="qrCodeEnabled" style="margin-right: 10px; width: auto;">
+                <span>Show QR code overlay on loop video (bottom-left)</span>
+            </label>
+        </div>
+
+        <div class="setting-group">
+            <label for="qrCodeUrl">QR Code Image URL:</label>
+            <input type="text" id="qrCodeUrl" placeholder="https://example.com/qr-code.png">
+            <small>
+                Shown in the bottom-left corner only while the loop video is playing.<br>
+                <strong>Temporary feature:</strong> uncheck the box above any time to hide it again without losing the URL.
+            </small>
+        </div>
+
+        <div class="setting-group">
             <label for="timerDuration">Timer Limit (MM:SS):</label>
             <input type="text" id="timerDuration" placeholder="20:00" pattern="[0-9]{1,2}:[0-9]{2}">
             <small>Timer counts up from 00:00 to this limit, then resets and continues</small>
@@ -356,6 +388,7 @@
                 this.video = document.getElementById('mainVideo');
                 this.image = document.getElementById('mainImage');
                 this.htmlFrame = document.getElementById('htmlFrame');
+                this.qrCodeOverlay = document.getElementById('qrCodeOverlay');
                 this.timerOverlay = document.getElementById('timerOverlay');
                 this.settingsPanel = document.getElementById('settingsPanel');
                 this.status = document.getElementById('status');
@@ -371,6 +404,7 @@
                 this.currentImageNumber = null; // e.g., "01", "02", etc.
                 this.currentImageExtension = null; // e.g., ".png", ".jpg"
                 this.isViewingImage = false;
+                this.isLoopVideoActive = false;
 
                 this.settings = {
                     mediaDirectory: '',
@@ -378,7 +412,9 @@
                     timerDuration: '20:00',
                     autoStartTimer: false,
                     htmlPages: ['', '', '', '', ''],
-                    htmlPagesBaseUrl: './html/'
+                    htmlPagesBaseUrl: './html/',
+                    qrCodeEnabled: false,
+                    qrCodeUrl: ''
                 };
 
                 // Cache for GitHub Release file listings
@@ -458,6 +494,9 @@
                 const htmlBaseField = document.getElementById('htmlPagesBaseUrl');
                 if (htmlBaseField) htmlBaseField.value = this.settings.htmlPagesBaseUrl || './html/';
 
+                document.getElementById('qrCodeEnabled').checked = !!this.settings.qrCodeEnabled;
+                document.getElementById('qrCodeUrl').value = this.settings.qrCodeUrl || '';
+
                 console.log('Settings loaded - Directory:', `"${this.settings.mediaDirectory}"`);
                 console.log('Settings loaded - Loop video:', `"${this.settings.loopVideoName}"`);
                 console.log('Settings loaded - Timer:', `"${this.settings.timerDuration}"`);
@@ -485,7 +524,10 @@
                 }
                 const htmlBaseField = document.getElementById('htmlPagesBaseUrl');
                 if (htmlBaseField) this.settings.htmlPagesBaseUrl = htmlBaseField.value.trim() || './html/';
-                
+
+                this.settings.qrCodeEnabled = document.getElementById('qrCodeEnabled').checked;
+                this.settings.qrCodeUrl = document.getElementById('qrCodeUrl').value.trim();
+
                 console.log('Settings object before save:', JSON.stringify(this.settings, null, 2));
                 
                 try {
@@ -505,8 +547,25 @@
                     this.defaultTimerSeconds = minutes * 60 + seconds;
                 }
                 
+                this.updateQrCodeVisibility();
+
                 this.showStatus('Settings saved');
                 this.closeSettings();
+            }
+
+            /**
+             * Show or hide the QR code overlay based on current settings and
+             * whether the loop video is currently the active content.
+             */
+            updateQrCodeVisibility() {
+                if (this.isLoopVideoActive && this.settings.qrCodeEnabled && this.settings.qrCodeUrl) {
+                    if (this.qrCodeOverlay.src !== this.settings.qrCodeUrl) {
+                        this.qrCodeOverlay.src = this.settings.qrCodeUrl;
+                    }
+                    this.qrCodeOverlay.style.display = 'block';
+                } else {
+                    this.qrCodeOverlay.style.display = 'none';
+                }
             }
             
             setupEventListeners() {
@@ -1274,6 +1333,9 @@
                 // Hide image if showing
                 this.hideImage();
 
+                this.isLoopVideoActive = true;
+                this.updateQrCodeVisibility();
+
                 // Try file path (no more upload support)
                 if (this.settings.mediaDirectory && (this.settings.loopVideoName || this.settings.mediaDirectory.startsWith('http'))) {
                     console.log('Trying file path for loop video');
@@ -1388,6 +1450,9 @@
                 this.hideImage();
                 this.hideHtmlPage();
 
+                this.isLoopVideoActive = false;
+                this.updateQrCodeVisibility();
+
                 // Use file path
                 if (this.settings.mediaDirectory) {
                     console.log(`Using file path for video ${number}`);
@@ -1424,6 +1489,9 @@
                 // Hide image and HTML frame if showing
                 this.hideImage();
                 this.hideHtmlPage();
+
+                this.isLoopVideoActive = false;
+                this.updateQrCodeVisibility();
 
                 // Use the improved loading method
                 this.loadVideoSource(url, false).catch(e => {
@@ -1572,6 +1640,9 @@
                 // to the repo and served via GitHub Pages) and any server that does not send
                 // Content-Disposition: attachment. GitHub Releases always send that header, so
                 // HTML files must NOT be hosted there — use the repo's html/ folder instead.
+                this.isLoopVideoActive = false;
+                this.updateQrCodeVisibility();
+
                 this.htmlFrame.src = url;
                 this.htmlFrame.style.display = 'block';
                 // Focus the iframe so scroll keys (PageUp/PageDown/Arrows) work
@@ -1601,6 +1672,9 @@
                 this.video.style.display = 'none';
 
                 // Note: Not setting crossOrigin - not needed for basic image display
+
+                this.isLoopVideoActive = false;
+                this.updateQrCodeVisibility();
 
                 // Handle image load errors
                 this.image.onerror = () => {
