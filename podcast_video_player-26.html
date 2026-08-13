@@ -62,7 +62,7 @@
         #qrCodeOverlay {
             position: absolute;
             left: 20px;
-            bottom: 20px;
+            top: 20px;
             width: 40vmin;
             height: 40vmin;
             background: white;
@@ -370,7 +370,14 @@
                 <span>Auto-start timer when loop video begins</span>
             </label>
         </div>
-        
+
+        <div class="setting-group">
+            <label style="display: flex; align-items: center;">
+                <input type="checkbox" id="timerDisabled" style="margin-right: 10px; width: auto;">
+                <span>Disable timer display (hide countdown timer overlay)</span>
+            </label>
+        </div>
+
         <div class="button-group">
             <button class="btn btn-primary" onclick="saveSettings()">Save</button>
             <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
@@ -414,7 +421,8 @@
                     htmlPages: ['', '', '', '', ''],
                     htmlPagesBaseUrl: './html/',
                     qrCodeEnabled: false,
-                    qrCodeUrl: ''
+                    qrCodeUrl: '',
+                    timerDisabled: false
                 };
 
                 // Cache for GitHub Release file listings
@@ -497,6 +505,9 @@
                 document.getElementById('qrCodeEnabled').checked = !!this.settings.qrCodeEnabled;
                 document.getElementById('qrCodeUrl').value = this.settings.qrCodeUrl || '';
 
+                document.getElementById('timerDisabled').checked = !!this.settings.timerDisabled;
+                this.updateTimerVisibility();
+
                 console.log('Settings loaded - Directory:', `"${this.settings.mediaDirectory}"`);
                 console.log('Settings loaded - Loop video:', `"${this.settings.loopVideoName}"`);
                 console.log('Settings loaded - Timer:', `"${this.settings.timerDuration}"`);
@@ -528,6 +539,8 @@
                 this.settings.qrCodeEnabled = document.getElementById('qrCodeEnabled').checked;
                 this.settings.qrCodeUrl = document.getElementById('qrCodeUrl').value.trim();
 
+                this.settings.timerDisabled = document.getElementById('timerDisabled').checked;
+
                 console.log('Settings object before save:', JSON.stringify(this.settings, null, 2));
                 
                 try {
@@ -548,6 +561,7 @@
                 }
                 
                 this.updateQrCodeVisibility();
+                this.updateTimerVisibility();
 
                 this.showStatus('Settings saved');
                 this.closeSettings();
@@ -566,6 +580,14 @@
                 } else {
                     this.qrCodeOverlay.style.display = 'none';
                 }
+            }
+
+            /**
+             * Show or hide the countdown timer overlay based on the
+             * "Disable timer display" setting.
+             */
+            updateTimerVisibility() {
+                this.timerOverlay.style.display = this.settings.timerDisabled ? 'none' : 'block';
             }
             
             setupEventListeners() {
