@@ -786,7 +786,7 @@
             /**
              * Fetch and cache GitHub Release assets
              */
-            async fetchGitHubReleaseFiles() {
+            async fetchGitHubReleaseFiles(forceRefresh = false) {
                 const releaseInfo = this.parseGitHubReleaseUrl(this.settings.mediaDirectory);
 
                 if (!releaseInfo) {
@@ -794,7 +794,8 @@
                 }
 
                 // Check if we already have cached data for this release
-                if (this.githubFilesCache &&
+                if (!forceRefresh &&
+                    this.githubFilesCache &&
                     this.githubReleaseInfo &&
                     this.githubReleaseInfo.owner === releaseInfo.owner &&
                     this.githubReleaseInfo.repo === releaseInfo.repo &&
@@ -834,9 +835,9 @@
             /**
              * Find a file matching the pattern (e.g., "01*.m4a")
              */
-            async findFileByPattern(number, extensions) {
+            async findFileByPattern(number, extensions, isRetry = false) {
                 // Try GitHub API for flexible naming
-                const files = await this.fetchGitHubReleaseFiles();
+                const files = await this.fetchGitHubReleaseFiles(isRetry);
 
                 if (files) {
                     console.log(`Searching ${files.length} files for pattern ${number}*`);
@@ -865,6 +866,12 @@
                     }
 
                     console.log('No matching files found in GitHub release');
+
+                    // Cached list may predate a new upload; refetch once before giving up
+                    if (!isRetry) {
+                        console.log('Refreshing GitHub release file list...');
+                        return this.findFileByPattern(number, extensions, true);
+                    }
                 } else {
                     console.log('No files returned from GitHub API (not a GitHub URL or API failed)');
                 }
